@@ -16,11 +16,13 @@ frame generation.
 
 ## Setup
 
-1. Build and pack the native UnityRHI package from the repository root, then
-   copy the packed package to the target project's
-   `Packages/top.kuanmi.unityrhi.native` folder. It must be an embedded package
-   under `Packages` because its preload function must run before Unity creates
-   the D3D12 device.
+1. Download the prebuilt native UnityRHI package from the
+   [latest GitHub Release](https://github.com/Kuan-Mi/UnityDLSSNR/releases/latest)
+   and extract it into the target project's `Packages` folder. Alternatively,
+   build and pack it from source and copy the packed package there. The final
+   path must be `Packages/top.kuanmi.unityrhi.native`. It must be an embedded
+   package because its preload function must run before Unity creates the D3D12
+   device.
 2. Add `top.kuanmi.unityrhi` and this package to the target project. Do not
    reference `top.kuanmi.unityrhi.native` directly from its external `Build`
    folder; use the copy under the target project's `Packages` folder.
@@ -56,7 +58,7 @@ more than once per frame.
 
 ## 设置
 
-1. 从仓库根目录构建并打包原生 UnityRHI 包，然后将打包后的包复制到目标项目的 `Packages/top.kuanmi.unityrhi.native` 文件夹中。该包必须作为嵌入式包放在 `Packages` 下，因为其中的预加载函数必须在 Unity 创建 D3D12 设备之前执行。
+1. 从[最新 GitHub Release](https://github.com/Kuan-Mi/UnityDLSSNR/releases/latest)下载预编译的原生 UnityRHI 包，并解压到目标项目的 `Packages` 文件夹；也可以从源码自行构建并打包，然后将打包后的包复制到该文件夹。最终路径必须为 `Packages/top.kuanmi.unityrhi.native`。该包必须作为嵌入式包使用，因为其中的预加载函数必须在 Unity 创建 D3D12 设备之前执行。
 2. 将 `top.kuanmi.unityrhi` 和本包添加到目标项目。不要从外部 `Build` 文件夹直接引用 `top.kuanmi.unityrhi.native`；请使用目标项目 `Packages` 文件夹中的副本。
 3. 启用 Direct3D 12，然后重启编辑器。
 4. 打开当前 URP 资源所使用的 Universal Renderer Data。

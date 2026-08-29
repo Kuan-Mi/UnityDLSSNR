@@ -7,9 +7,12 @@ bindless resources, compute and explicit resource barriers that the engine does
 not surface itself.
 
 This folder is the UPM **C# source** (`top.kuanmi.unityrhi`). Native binaries
-live in the sibling package `top.kuanmi.unityrhi.native` and are not committed
-— run `1-Deploy.bat` / `2-Build.bat` / `3-Pack.bat` from the repository root.
-Native plugin sources live one level up, in `RenderingPlugin/`.
+live in the sibling package `top.kuanmi.unityrhi.native` and are not committed.
+Download the prebuilt native package from the
+[latest GitHub Release](https://github.com/Kuan-Mi/UnityDLSSNR/releases/latest),
+or run `1-Deploy.bat` / `2-Build.bat` / `3-Pack.bat` from the repository root
+to build it from source. Native plugin sources live one level up, in
+`RenderingPlugin/`.
 
 ## Requirements
 
@@ -83,7 +86,7 @@ For the RTX Path Tracing renderer built on this package, see
 
 这是一个面向 Unity、运行于 **Direct3D12** 上且采用 NVRHI 风格的渲染硬件接口。命令会被记录到命令流中，再直接重放到 Unity 自身的 D3D12 命令列表上，从而提供引擎本身未公开的光线追踪、无绑定资源、计算以及显式资源屏障能力。
 
-此文件夹是 UPM **C# 源码**包（`top.kuanmi.unityrhi`）。原生二进制文件位于同级包 `top.kuanmi.unityrhi.native` 中，且不会提交到仓库——请从仓库根目录依次运行 `1-Deploy.bat`、`2-Build.bat` 和 `3-Pack.bat`。原生插件源码位于上一级的 `RenderingPlugin/` 中。
+此文件夹是 UPM **C# 源码**包（`top.kuanmi.unityrhi`）。原生二进制文件位于同级包 `top.kuanmi.unityrhi.native` 中，且不会提交到仓库。可以从[最新 GitHub Release](https://github.com/Kuan-Mi/UnityDLSSNR/releases/latest)下载预编译原生包，也可以从仓库根目录依次运行 `1-Deploy.bat`、`2-Build.bat` 和 `3-Pack.bat`，自行从源码构建。原生插件源码位于上一级的 `RenderingPlugin/` 中。
 
 ## 要求
 

@@ -27,15 +27,30 @@ runtime, and a DLSS 5 Neural Rendering integration for Unity 6.3 URP.
 
 - Windows x64.
 - Unity 6.3 with Direct3D 12 selected as the active graphics API.
-- CMake 3.24 or newer.
-- Visual Studio 2022 with the Desktop development with C++ workload.
-- Network access during initial CMake configuration so the pinned native
-  dependencies can be downloaded.
 - Supported NVIDIA hardware and driver for the NVIDIA features being used.
 - Unity 6.3 with URP 17 or newer and RenderGraph enabled for the DLSS Neural
   Rendering URP package.
 
-## Build the native package
+Building the native package from source additionally requires CMake 3.24 or
+newer, Visual Studio 2022 with the Desktop development with C++ workload, and
+network access during initial CMake configuration.
+
+## Download the prebuilt native package
+
+The recommended option is to download
+[`top.kuanmi.unityrhi.native-1.0.0.zip`](https://github.com/Kuan-Mi/UnityDLSSNR/releases/download/v1.0.0/top.kuanmi.unityrhi.native-1.0.0.zip)
+from the [latest GitHub Release](https://github.com/Kuan-Mi/UnityDLSSNR/releases/latest).
+It contains the prebuilt Windows x64 native package, so CMake, Visual Studio,
+and the repository build scripts are not required.
+
+Extract the archive directly into the target Unity project's `Packages`
+folder. The resulting path must be:
+
+```text
+<UnityProject>/Packages/top.kuanmi.unityrhi.native/package.json
+```
+
+## Build the native package from source
 
 Run the following scripts from the repository root in order:
 
@@ -67,7 +82,9 @@ Neural Rendering will not be available.
 
 ## Add the packages to a Unity project
 
-1. Copy `Build/top.kuanmi.unityrhi.native` to the target Unity project as
+1. Download and extract the prebuilt native package into the target project's
+   `Packages` folder, or copy the locally built
+   `Build/top.kuanmi.unityrhi.native` directory there. The final path must be
    `Packages/top.kuanmi.unityrhi.native`.
 2. Add or copy `Packages/top.kuanmi.unityrhi` into the target project.
 3. For DLSS Neural Rendering, also add or copy
@@ -132,13 +149,28 @@ UnityRHI 是面向 Unity 的 Direct3D 12 渲染硬件接口和原生插件栈。
 
 - Windows x64。
 - Unity 6.3，并将 Direct3D 12 设为当前图形 API。
-- CMake 3.24 或更高版本。
-- Visual Studio 2022，并安装“使用 C++ 的桌面开发”工作负载。
-- 首次运行 CMake 配置时需要网络连接，以下载锁定版本的原生依赖项。
 - 使用 NVIDIA 功能时，需要相应功能所支持的 NVIDIA 硬件和驱动。
 - 使用 DLSS 神经渲染 URP 包时，需要 Unity 6.3、URP 17 或更高版本，并启用 RenderGraph。
 
-## 构建原生包
+只有从源码构建原生包时，才额外需要 CMake 3.24 或更高版本、安装了“使用
+C++ 的桌面开发”工作负载的 Visual Studio 2022，以及首次运行 CMake 配置时
+用于下载锁定版本原生依赖项的网络连接。
+
+## 下载预编译原生包
+
+推荐直接从[最新 GitHub Release](https://github.com/Kuan-Mi/UnityDLSSNR/releases/latest)
+下载
+[`top.kuanmi.unityrhi.native-1.0.0.zip`](https://github.com/Kuan-Mi/UnityDLSSNR/releases/download/v1.0.0/top.kuanmi.unityrhi.native-1.0.0.zip)。
+其中已经包含编译好的 Windows x64 原生包，无需安装 CMake、Visual Studio，
+也无需运行仓库中的构建脚本。
+
+将压缩包直接解压到目标 Unity 项目的 `Packages` 文件夹，最终路径必须为：
+
+```text
+<UnityProject>/Packages/top.kuanmi.unityrhi.native/package.json
+```
+
+## 从源码构建原生包
 
 在仓库根目录中依次运行：
 
@@ -168,7 +200,8 @@ Packages/top.kuanmi.unityrhi.native/Plugins/x86_64/nvngx_dlssnr.dll
 
 ## 添加到 Unity 项目
 
-1. 将 `Build/top.kuanmi.unityrhi.native` 复制到目标 Unity 项目的
+1. 下载预编译原生包并解压到目标项目的 `Packages` 文件夹，或者将本地构建的
+   `Build/top.kuanmi.unityrhi.native` 复制到该文件夹。最终路径必须为
    `Packages/top.kuanmi.unityrhi.native`。
 2. 将 `Packages/top.kuanmi.unityrhi` 添加或复制到目标项目。
 3. 如需使用 DLSS 神经渲染，还需添加或复制
