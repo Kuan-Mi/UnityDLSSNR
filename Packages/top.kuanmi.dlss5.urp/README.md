@@ -1,13 +1,13 @@
 # UnityRHI DLSS 5 Neural Rendering for URP
 
-A standalone, full-resolution DLSS Neural Rendering post-process for Unity 6
+A standalone, full-resolution DLSS Neural Rendering post-process for Unity 6.3
 URP. It consumes the rasterized camera color, depth and motion vectors. It does
 not depend on RTX Path Tracing, DLSS Ray Reconstruction, super resolution or
 frame generation.
 
 ## Requirements
 
-- Unity 6 with URP 17 or newer and RenderGraph enabled.
+- Unity 6.3 with URP 17 or newer and RenderGraph enabled.
 - Windows x64 using Direct3D 12.
 - `top.kuanmi.unityrhi` and the packed `top.kuanmi.unityrhi.native` package.
 - NVIDIA hardware and driver supported by the bundled DLSS-NR runtime. The
@@ -45,11 +45,11 @@ more than once per frame.
 
 # UnityRHI DLSS 5 神经渲染（URP）
 
-这是一个面向 Unity 6 URP、独立运行且保持完整分辨率的 DLSS 神经渲染后处理。它使用光栅化后的相机颜色、深度和运动矢量，不依赖 RTX 路径追踪、DLSS 光线重建、超分辨率或帧生成。
+这是一个面向 Unity 6.3 URP、独立运行且保持完整分辨率的 DLSS 神经渲染后处理。它使用光栅化后的相机颜色、深度和运动矢量，不依赖 RTX 路径追踪、DLSS 光线重建、超分辨率或帧生成。
 
 ## 要求
 
-- Unity 6，使用 URP 17 或更高版本，并启用 RenderGraph。
+- Unity 6.3，使用 URP 17 或更高版本，并启用 RenderGraph。
 - Windows x64，使用 Direct3D 12。
 - `top.kuanmi.unityrhi` 和已打包的 `top.kuanmi.unityrhi.native` 包。
 - NVIDIA 硬件和驱动须受随附的 DLSS-NR 运行时支持。当前原生集成通过 `RhiCore.IsDlssNrAvailable` 报告可用性。

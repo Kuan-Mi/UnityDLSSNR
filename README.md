@@ -6,7 +6,7 @@ command list, exposing ray tracing, bindless resources, compute, explicit
 resource barriers, and NVIDIA neural rendering features.
 
 This repository contains the managed UnityRHI package, its Windows x64 native
-runtime, and a DLSS 5 Neural Rendering integration for Unity 6 URP.
+runtime, and a DLSS 5 Neural Rendering integration for Unity 6.3 URP.
 
 ## Repository layout
 
@@ -14,7 +14,7 @@ runtime, and a DLSS 5 Neural Rendering integration for Unity 6 URP.
 |---|---|
 | `Packages/top.kuanmi.unityrhi` | UnityRHI C# runtime, editor tools, command stream, interop, and shader importer |
 | `Packages/top.kuanmi.unityrhi.native` | Source layout for the Windows x64 native UPM package |
-| `Packages/top.kuanmi.dlss5.urp` | DLSS 5 Neural Rendering post-process for Unity 6 URP |
+| `Packages/top.kuanmi.dlss5.urp` | DLSS 5 Neural Rendering post-process for Unity 6.3 URP |
 | `RenderingPlugin` | C++ sources and CMake project for UnityRHI, NRIPlugin, and supporting native libraries |
 | `1-Deploy.bat` | Generates the Visual Studio 2022 x64 build files in `_Build` |
 | `2-Build.bat` | Builds the native projects into `_Bin/<Configuration>` |
@@ -24,13 +24,13 @@ runtime, and a DLSS 5 Neural Rendering integration for Unity 6 URP.
 ## Requirements
 
 - Windows x64.
-- Unity with Direct3D 12 selected as the active graphics API.
+- Unity 6.3 with Direct3D 12 selected as the active graphics API.
 - CMake 3.24 or newer.
 - Visual Studio 2022 with the Desktop development with C++ workload.
 - Network access during initial CMake configuration so the pinned native
   dependencies can be downloaded.
 - Supported NVIDIA hardware and driver for the NVIDIA features being used.
-- Unity 6 with URP 17 or newer and RenderGraph enabled for the DLSS Neural
+- Unity 6.3 with URP 17 or newer and RenderGraph enabled for the DLSS Neural
   Rendering URP package.
 
 ## Build the native package
@@ -110,7 +110,7 @@ UnityRHI 是面向 Unity 的 Direct3D 12 渲染硬件接口和原生插件栈。
 侧记录命令，并直接在 Unity 的 D3D12 命令列表上重放，从而提供光线追踪、
 无绑定资源、计算、显式资源屏障和 NVIDIA 神经渲染能力。
 
-本仓库包含 UnityRHI C# 包、Windows x64 原生运行时，以及面向 Unity 6 URP
+本仓库包含 UnityRHI C# 包、Windows x64 原生运行时，以及面向 Unity 6.3 URP
 的 DLSS 5 神经渲染集成。
 
 ## 仓库结构
@@ -119,7 +119,7 @@ UnityRHI 是面向 Unity 的 Direct3D 12 渲染硬件接口和原生插件栈。
 |---|---|
 | `Packages/top.kuanmi.unityrhi` | UnityRHI C# 运行时、编辑器工具、命令流、互操作层和着色器导入器 |
 | `Packages/top.kuanmi.unityrhi.native` | Windows x64 原生 UPM 包的源目录结构 |
-| `Packages/top.kuanmi.dlss5.urp` | 面向 Unity 6 URP 的 DLSS 5 神经渲染后处理 |
+| `Packages/top.kuanmi.dlss5.urp` | 面向 Unity 6.3 URP 的 DLSS 5 神经渲染后处理 |
 | `RenderingPlugin` | UnityRHI、NRIPlugin 和相关原生库的 C++ 源码及 CMake 工程 |
 | `1-Deploy.bat` | 在 `_Build` 中生成 Visual Studio 2022 x64 构建文件 |
 | `2-Build.bat` | 将原生项目构建到 `_Bin/<Configuration>` |
@@ -129,12 +129,12 @@ UnityRHI 是面向 Unity 的 Direct3D 12 渲染硬件接口和原生插件栈。
 ## 环境要求
 
 - Windows x64。
-- Unity，并将 Direct3D 12 设为当前图形 API。
+- Unity 6.3，并将 Direct3D 12 设为当前图形 API。
 - CMake 3.24 或更高版本。
 - Visual Studio 2022，并安装“使用 C++ 的桌面开发”工作负载。
 - 首次运行 CMake 配置时需要网络连接，以下载锁定版本的原生依赖项。
 - 使用 NVIDIA 功能时，需要相应功能所支持的 NVIDIA 硬件和驱动。
-- 使用 DLSS 神经渲染 URP 包时，需要 Unity 6、URP 17 或更高版本，并启用 RenderGraph。
+- 使用 DLSS 神经渲染 URP 包时，需要 Unity 6.3、URP 17 或更高版本，并启用 RenderGraph。
 
 ## 构建原生包
 

@@ -8,7 +8,7 @@ using UnityEngine.Rendering.Universal;
 namespace UnityRhi.DlssNr.Urp
 {
     /// <summary>
-    /// Full-resolution DLSS Neural Rendering post-process for Unity 6 URP.
+    /// Full-resolution DLSS Neural Rendering post-process for Unity 6.3 URP.
     /// It consumes raster color, depth and motion vectors and has no RTXPT dependency.
     /// </summary>
     [DisallowMultipleRendererFeature("DLSS Neural Rendering")]

@@ -37,7 +37,7 @@ namespace UnityRhi.DlssNr.Urp.Editor
                 EditorGUILayout.LabelField("Last Evaluate", FormatResult(RhiCore.DlssNrLastEvaluateResult));
             }
             EditorGUILayout.HelpBox(
-                "Requires Unity 6 URP, Windows x64, Direct3D 12 and supported NVIDIA hardware/driver. " +
+                "Requires Unity 6.3 URP, Windows x64, Direct3D 12 and supported NVIDIA hardware/driver. " +
                 "The first version processes SDR, non-XR, full-resolution camera output only.",
                 MessageType.Info);
         }
