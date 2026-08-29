@@ -8,6 +8,8 @@ resource barriers, and NVIDIA neural rendering features.
 This repository contains the managed UnityRHI package, its Windows x64 native
 runtime, and a DLSS 5 Neural Rendering integration for Unity 6.3 URP.
 
+![DLSS Neural Rendering running in Unity](01.png)
+
 ## Repository layout
 
 | Path | Description |
