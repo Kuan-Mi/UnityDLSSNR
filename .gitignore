@@ -1,0 +1,26 @@
+# Deploy / Build / Pack (NRD-Sample layout)
+_Bin/
+_Build/
+Build/
+
+# Native build (legacy in-tree)
+RenderingPlugin/build/
+RenderingPlugin/out/
+RenderingPlugin/.vs/
+RenderingPlugin/TestResults/
+
+# Built plugins belong in Build/, not the source package
+Packages/top.kuanmi.unityrhi.native/Plugins/**/*.dll
+
+# Visual Studio / CMake
+.vs/
+CMakeUserPresets.json
+*.user
+*.suo
+*.VC.db
+*.VC.opendb
+*.pdb
+
+# OS
+Thumbs.db
+Desktop.ini

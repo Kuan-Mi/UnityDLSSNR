@@ -1,0 +1,62 @@
+using UnityEditor;
+using UnityEngine;
+
+namespace UnityRhi.DlssNr.Urp.Editor
+{
+    [CustomEditor(typeof(DlssNrRenderFeature))]
+    internal sealed class DlssNrRenderFeatureEditor : UnityEditor.Editor
+    {
+        private SerializedProperty _shader;
+
+        private void OnEnable()
+        {
+            _shader = serializedObject.FindProperty("prepareInputsShader");
+            AssignDefaultShader();
+        }
+
+        public override void OnInspectorGUI()
+        {
+            AssignDefaultShader();
+            DrawDefaultInspector();
+            if (GUILayout.Button("Reset DLSS-NR History"))
+            {
+                var feature = (DlssNrRenderFeature)target;
+                feature.ResetHistory();
+            }
+            EditorGUILayout.Space();
+            EditorGUILayout.HelpBox(
+                "Runtime image controls are provided by Add Override > Post-processing > " +
+                "DLSS Neural Rendering on a Volume Profile.", MessageType.Info);
+            using (new EditorGUI.DisabledScope(!RhiCore.IsD3D12Active))
+            {
+                EditorGUILayout.LabelField("Runtime Status", EditorStyles.boldLabel);
+                EditorGUILayout.LabelField("D3D12", RhiCore.IsD3D12Active ? "Active" : "Unavailable");
+                EditorGUILayout.LabelField("DLSS-NR Runtime", RhiCore.IsDlssNrAvailable
+                    ? "Available" : $"Unavailable (0x{unchecked((uint)RhiCore.DlssNrInitResult):X8})");
+                EditorGUILayout.LabelField("Last Create", FormatResult(RhiCore.DlssNrLastCreateResult));
+                EditorGUILayout.LabelField("Last Evaluate", FormatResult(RhiCore.DlssNrLastEvaluateResult));
+            }
+            EditorGUILayout.HelpBox(
+                "Requires Unity 6 URP, Windows x64, Direct3D 12 and supported NVIDIA hardware/driver. " +
+                "The first version processes SDR, non-XR, full-resolution camera output only.",
+                MessageType.Info);
+        }
+
+        private void AssignDefaultShader()
+        {
+            if (_shader == null || _shader.objectReferenceValue != null)
+                return;
+            UnityEngine.Shader shader = AssetDatabase.LoadAssetAtPath<UnityEngine.Shader>(
+                "Packages/top.kuanmi.dlss5.urp/Shaders/DlssNrPrepareInputs.shader");
+            if (shader == null)
+                return;
+            serializedObject.Update();
+            _shader.objectReferenceValue = shader;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(target);
+        }
+
+        private static string FormatResult(int result) =>
+            $"0x{unchecked((uint)result):X8}";
+    }
+}

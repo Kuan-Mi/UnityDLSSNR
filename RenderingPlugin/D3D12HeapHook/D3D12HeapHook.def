@@ -1,0 +1,7 @@
+LIBRARY D3D12HeapHook
+EXPORTS
+    ?BeginPluginDispatch@D3D12HeapHook@@YAXXZ @1
+    ?EndPluginDispatch@D3D12HeapHook@@YAXXZ @2
+    ?InstallHookFromDevice@D3D12HeapHook@@YA_NPEAUID3D12Device@@@Z @3
+    ?RestoreUnityHeaps@D3D12HeapHook@@YAXPEAUID3D12GraphicsCommandList@@@Z @4
+    ?SetLogger@D3D12HeapHook@@YAXP6AXHPEBD@Z@Z @5

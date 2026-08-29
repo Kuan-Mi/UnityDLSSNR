@@ -1,0 +1,26 @@
+{
+  "name": "UnityRhi.DlssNr.Urp",
+  "rootNamespace": "UnityRhi.DlssNr.Urp",
+  "references": [
+    "UnityRhi.Runtime",
+    "Unity.RenderPipelines.Core.Runtime",
+    "Unity.RenderPipelines.Universal.Runtime"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "UNITYRHI_DLSSNR_URP"
+  ],
+  "versionDefines": [
+    {
+      "name": "com.unity.render-pipelines.universal",
+      "expression": "17.0.0",
+      "define": "UNITYRHI_DLSSNR_URP"
+    }
+  ],
+  "noEngineReferences": false
+}
