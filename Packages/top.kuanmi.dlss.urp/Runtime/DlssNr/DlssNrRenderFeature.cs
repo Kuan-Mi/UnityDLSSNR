@@ -195,6 +195,7 @@ namespace UnityRhi.Dlss.Urp
                 public TextureHandle Depth;
                 public TextureHandle Motion;
                 public Material Material;
+                public MaterialPropertyBlock Properties;
                 public bool ColorArray;
                 public bool DepthArray;
                 public bool MotionArray;
@@ -213,6 +214,7 @@ namespace UnityRhi.Dlss.Urp
                 public TextureHandle Depth;
                 public TextureHandle Motion;
                 public Material Material;
+                public MaterialPropertyBlock Properties;
                 public int Mode;
                 public float MotionScaleX;
                 public float MotionScaleY;
@@ -224,6 +226,7 @@ namespace UnityRhi.Dlss.Urp
             {
                 public TextureHandle Source;
                 public Material Material;
+                public MaterialPropertyBlock Properties;
             }
 
             internal DlssNrPass(DlssNrRenderFeature feature)
@@ -390,6 +393,7 @@ namespace UnityRhi.Dlss.Urp
                     passData.Depth = sourceDepth;
                     passData.Motion = sourceMotion;
                     passData.Material = _feature._prepareMaterial;
+                    passData.Properties = new MaterialPropertyBlock();
                     passData.ColorArray = colorArray;
                     passData.DepthArray = depthArray;
                     passData.MotionArray = motionArray;
@@ -407,12 +411,16 @@ namespace UnityRhi.Dlss.Urp
                         SetKeyword(data.Material, ColorArrayKeyword, data.ColorArray);
                         SetKeyword(data.Material, DepthArrayKeyword, data.DepthArray);
                         SetKeyword(data.Material, MotionArrayKeyword, data.MotionArray);
-                        data.Material.SetTexture(InputColorId, data.Color);
-                        data.Material.SetTexture(InputDepthId, data.Depth);
-                        data.Material.SetTexture(InputMotionId, data.Motion);
-                        data.Material.SetFloat(EyeSliceId, data.EyeSlice);
+                        // DrawProcedural keeps a live Material reference. Single-pass records
+                        // one prepare per eye against the same material, so SetTexture/SetFloat
+                        // would both execute as the last eye (right). MPB is copied per draw.
+                        data.Properties.Clear();
+                        data.Properties.SetTexture(InputColorId, data.Color);
+                        data.Properties.SetTexture(InputDepthId, data.Depth);
+                        data.Properties.SetTexture(InputMotionId, data.Motion);
+                        data.Properties.SetFloat(EyeSliceId, data.EyeSlice);
                         rgContext.cmd.DrawProcedural(Matrix4x4.identity, data.Material, 0,
-                            MeshTopology.Triangles, 3, 1);
+                            MeshTopology.Triangles, 3, 1, data.Properties);
                     });
                 }
 
@@ -428,6 +436,7 @@ namespace UnityRhi.Dlss.Urp
                         passData.Depth = depth;
                         passData.Motion = motion;
                         passData.Material = _feature._debugMaterial;
+                        passData.Properties = new MaterialPropertyBlock();
                         passData.Mode = (int)settings.DebugMode;
                         passData.MotionScaleX = -width * settings.MotionVectorScale.x;
                         passData.MotionScaleY = -height * settings.MotionVectorScale.y;
@@ -439,15 +448,16 @@ namespace UnityRhi.Dlss.Urp
                         builder.AllowPassCulling(false);
                         builder.SetRenderFunc(static (DebugPassData data, RasterGraphContext rgContext) =>
                         {
-                            data.Material.SetTexture(InputDepthId, data.Depth);
-                            data.Material.SetTexture(InputMotionId, data.Motion);
-                            data.Material.SetInt(DebugModeId, data.Mode);
-                            data.Material.SetFloat(DebugMotionScaleXId, data.MotionScaleX);
-                            data.Material.SetFloat(DebugMotionScaleYId, data.MotionScaleY);
-                            data.Material.SetFloat(DebugMotionRangeId, data.MotionRange);
-                            data.Material.SetFloat(DebugDepthRangeId, data.DepthRange);
+                            data.Properties.Clear();
+                            data.Properties.SetTexture(InputDepthId, data.Depth);
+                            data.Properties.SetTexture(InputMotionId, data.Motion);
+                            data.Properties.SetInt(DebugModeId, data.Mode);
+                            data.Properties.SetFloat(DebugMotionScaleXId, data.MotionScaleX);
+                            data.Properties.SetFloat(DebugMotionScaleYId, data.MotionScaleY);
+                            data.Properties.SetFloat(DebugMotionRangeId, data.MotionRange);
+                            data.Properties.SetFloat(DebugDepthRangeId, data.DepthRange);
                             rgContext.cmd.DrawProcedural(Matrix4x4.identity, data.Material, 1,
-                                MeshTopology.Triangles, 3, 1);
+                                MeshTopology.Triangles, 3, 1, data.Properties);
                         });
                     }
 
@@ -501,14 +511,16 @@ namespace UnityRhi.Dlss.Urp
                 {
                     passData.Source = source;
                     passData.Material = _feature._copyMaterial;
+                    passData.Properties = new MaterialPropertyBlock();
                     builder.UseTexture(source, AccessFlags.Read);
                     builder.SetRenderAttachment(destination, 0, AccessFlags.ReadWrite, 0, eye);
                     builder.AllowPassCulling(false);
                     builder.SetRenderFunc(static (CopyPassData data, RasterGraphContext rgContext) =>
                     {
-                        data.Material.SetTexture(CopySourceId, data.Source);
+                        data.Properties.Clear();
+                        data.Properties.SetTexture(CopySourceId, data.Source);
                         rgContext.cmd.DrawProcedural(Matrix4x4.identity, data.Material, 2,
-                            MeshTopology.Triangles, 3, 1);
+                            MeshTopology.Triangles, 3, 1, data.Properties);
                     });
                 }
             }
