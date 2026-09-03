@@ -94,6 +94,13 @@ namespace UnityRhi
             NativeMethods.UnityRhiSubmitFrameGenerationInputs(inputs);
 
         /// <summary>
+        /// Submits a managed DLSS-G input packet. Native code copies it
+        /// synchronously and retains the two D3D12 resources.
+        /// </summary>
+        public static void SubmitFrameGenerationInputs(in FrameGenerationInputs inputs) =>
+            FrameGenerationInputs.Submit(inputs);
+
+        /// <summary>
         /// DXGI Present count observed by the plugin (generated + real frames).
         /// Use this for displayed FPS; Unity's Time.deltaTime only counts rendered frames.
         /// </summary>

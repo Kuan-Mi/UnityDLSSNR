@@ -2,7 +2,7 @@
   "name": "top.kuanmi.dlss.urp",
   "version": "0.1.0",
   "displayName": "UnityRHI DLSS for URP",
-  "description": "DLSS SuperSampling (IUpscaler) and DLSS 5 Neural Rendering for Unity 6.3 URP via UnityRHI native NGX.",
+  "description": "DLSS SuperSampling (IUpscaler), DLSS Frame Generation, and DLSS 5 Neural Rendering for Unity 6.3 URP via UnityRHI native NGX.",
   "unity": "6000.3",
   "dependencies": {
     "com.unity.render-pipelines.universal": "17.0.0",
@@ -17,6 +17,8 @@
     "dlss",
     "dlaa",
     "dlss-nr",
+    "dlss-g",
+    "frame-generation",
     "super-resolution",
     "neural-rendering",
     "iupscaler",

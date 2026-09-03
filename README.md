@@ -6,8 +6,8 @@ command list, exposing ray tracing, bindless resources, compute, explicit
 resource barriers, and NVIDIA neural rendering features.
 
 This repository contains the managed UnityRHI package, its Windows x64 native
-runtime, and a Unity 6.3 URP integration for DLSS Super Resolution and DLSS 5
-Neural Rendering, with XR support.
+runtime, and a Unity 6.3 URP integration for DLSS Super Resolution, DLSS Frame
+Generation, and DLSS 5 Neural Rendering, with XR support for SR and NR.
 
 ![DLSS Neural Rendering running in Unity](01.png)
 
@@ -17,7 +17,7 @@ Neural Rendering, with XR support.
 |---|---|
 | `Packages/top.kuanmi.unityrhi` | UnityRHI C# runtime, editor tools, command stream, interop, and shader importer |
 | `Packages/top.kuanmi.unityrhi.native` | Source layout for the Windows x64 native UPM package |
-| `Packages/top.kuanmi.dlss.urp` | DLSS Super Resolution (IUpscaler) and DLSS 5 Neural Rendering for Unity 6.3 URP |
+| `Packages/top.kuanmi.dlss.urp` | DLSS Super Resolution (IUpscaler), DLSS Frame Generation, and DLSS 5 Neural Rendering for Unity 6.3 URP |
 | `RenderingPlugin` | C++ sources and CMake project for UnityRHI, NRIPlugin, and supporting native libraries |
 | `1-Deploy.bat` | Generates the Visual Studio 2022 x64 build files in `_Build` |
 | `2-Build.bat` | Builds the native projects into `_Bin/<Configuration>` |
@@ -88,7 +88,7 @@ Neural Rendering will not be available.
    `Build/top.kuanmi.unityrhi.native` directory there. The final path must be
    `Packages/top.kuanmi.unityrhi.native`.
 2. Add or copy `Packages/top.kuanmi.unityrhi` into the target project.
-3. For DLSS Super Resolution and/or Neural Rendering, also add or copy
+3. For DLSS Super Resolution, Frame Generation and/or Neural Rendering, also add or copy
    `Packages/top.kuanmi.dlss.urp`.
 4. Select Direct3D 12 as the active Windows graphics API and restart the Unity
    Editor.
@@ -118,7 +118,14 @@ Neural Rendering:
 The renderer feature requests the required depth and motion-vector textures
 automatically. Image controls are read from the active camera's blended Volume
 stack and can be adjusted at runtime. Default SDR Game-camera order is
-raster → NR → IUpscaler → remaining post.
+raster → NR → IUpscaler → remaining post. Frame Generation copies depth/motion
+after post and inserts interpolated frames at Present in the standalone Player.
+
+Frame Generation:
+
+1. Add **DLSS Frame Generation** to the Universal Renderer Data.
+2. Keep the pass at **After Rendering Post Processing** and enable it on the feature.
+3. Make a Windows x64 Player build. The Editor Game view does not insert generated frames. F8 toggles FG at runtime.
 
 ## Package documentation
 
@@ -137,7 +144,7 @@ UnityRHI 是面向 Unity 的 Direct3D 12 渲染硬件接口和原生插件栈。
 无绑定资源、计算、显式资源屏障和 NVIDIA 神经渲染能力。
 
 本仓库包含 UnityRHI C# 包、Windows x64 原生运行时，以及面向 Unity 6.3 URP
-的 DLSS 超分辨率与 DLSS 5 神经渲染集成，同时支持XR。
+的 DLSS 超分辨率、DLSS 帧生成与 DLSS 5 神经渲染集成。超分和神经渲染同时支持 XR。
 
 ## 仓库结构
 
@@ -145,7 +152,7 @@ UnityRHI 是面向 Unity 的 Direct3D 12 渲染硬件接口和原生插件栈。
 |---|---|
 | `Packages/top.kuanmi.unityrhi` | UnityRHI C# 运行时、编辑器工具、命令流、互操作层和着色器导入器 |
 | `Packages/top.kuanmi.unityrhi.native` | Windows x64 原生 UPM 包的源目录结构 |
-| `Packages/top.kuanmi.dlss.urp` | 面向 Unity 6.3 URP 的 DLSS 超分辨率（IUpscaler）与 DLSS 5 神经渲染 |
+| `Packages/top.kuanmi.dlss.urp` | 面向 Unity 6.3 URP 的 DLSS 超分辨率（IUpscaler）、DLSS 帧生成与 DLSS 5 神经渲染 |
 | `RenderingPlugin` | UnityRHI、NRIPlugin 和相关原生库的 C++ 源码及 CMake 工程 |
 | `1-Deploy.bat` | 在 `_Build` 中生成 Visual Studio 2022 x64 构建文件 |
 | `2-Build.bat` | 将原生项目构建到 `_Bin/<Configuration>` |
@@ -211,7 +218,7 @@ Packages/top.kuanmi.unityrhi.native/Plugins/x86_64/nvngx_dlssnr.dll
    `Build/top.kuanmi.unityrhi.native` 复制到该文件夹。最终路径必须为
    `Packages/top.kuanmi.unityrhi.native`。
 2. 将 `Packages/top.kuanmi.unityrhi` 添加或复制到目标项目。
-3. 如需使用 DLSS 超分辨率和/或神经渲染，还需添加或复制
+3. 如需使用 DLSS 超分辨率、帧生成和/或神经渲染，还需添加或复制
    `Packages/top.kuanmi.dlss.urp`。
 4. 将 Direct3D 12 设为 Windows 当前图形 API，然后重启 Unity 编辑器。
 
@@ -238,7 +245,14 @@ Unity 创建 D3D12 设备之前执行的预加载函数。
 
 Renderer Feature 会自动请求所需的深度纹理和运动矢量纹理。图像控制参数从
 当前相机混合后的 Volume 栈中读取，并可在运行时调整。默认 SDR Game 相机顺序为
-光栅 → NR → IUpscaler → 其余后处理。
+光栅 → NR → IUpscaler → 其余后处理。帧生成在后处理之后拷贝深度/运动矢量，
+并在独立 Player 的 Present 时插入插值帧。
+
+帧生成：
+
+1. 在 Universal Renderer Data 上添加 **DLSS Frame Generation**。
+2. 将渲染阶段保持为 **After Rendering Post Processing**，并在 Feature 上启用。
+3. 打 Windows x64 Player 包。编辑器 Game 视图不会插入生成帧。运行时 F8 可开关 FG。
 
 ## 各包文档
 

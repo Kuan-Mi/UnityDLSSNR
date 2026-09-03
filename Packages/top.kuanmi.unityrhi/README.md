@@ -30,6 +30,7 @@ to build it from source. Native plugin sources live one level up, in
 | `Runtime/Interop` | P/Invoke for `UnityRHI.dll` |
 | `Runtime/Shaders` | `RhiShader` / variant assets consumed at runtime |
 | `Runtime/Dlrr` | In-process DLSS Ray Reconstruction (`DlrrContext`) |
+| `Runtime/DLSSG` | Direct NGX Frame Generation input packet (`FrameGenerationInputs`) |
 | `Runtime/NRD` | NRIPlugin wrappers for NVIDIA Real-time Denoisers |
 | `Runtime/DLSR` | NRIPlugin wrappers for DLSS Super Resolution |
 | `Editor` | Debug and frame-debugger windows |
