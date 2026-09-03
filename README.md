@@ -39,7 +39,7 @@ network access during initial CMake configuration.
 ## Download the prebuilt native package
 
 The recommended option is to download
-[`top.kuanmi.unityrhi.native-1.0.1.zip`](https://github.com/Kuan-Mi/UnityDLSSNR/releases/download/v1.0.1/top.kuanmi.unityrhi.native-1.0.1.zip)
+[`top.kuanmi.unityrhi.native-1.0.2.zip`](https://github.com/Kuan-Mi/UnityDLSSNR/releases/download/v1.0.2/top.kuanmi.unityrhi.native-1.0.2.zip)
 from the [latest GitHub Release](https://github.com/Kuan-Mi/UnityDLSSNR/releases/latest).
 It contains the prebuilt Windows x64 native package, so CMake, Visual Studio,
 and the repository build scripts are not required.
@@ -120,6 +120,15 @@ automatically. Image controls are read from the active camera's blended Volume
 stack and can be adjusted at runtime. Default SDR Game-camera order is
 raster → NR → IUpscaler → remaining post.
 
+## XR support
+
+The DLSS URP package supports XR rendering in both multipass and single-pass
+instanced modes. DLSS Super Resolution maintains a separate NGX history for
+each eye. DLSS Neural Rendering is evaluated at native resolution for each eye
+and likewise keeps per-eye history. Configure the XR provider normally in
+Unity, keep Direct3D 12 as the active Windows graphics API, and use the same
+URP/DLSS setup described above.
+
 ## Package documentation
 
 - [UnityRHI](Packages/top.kuanmi.unityrhi/README.md)
@@ -167,7 +176,7 @@ C++ 的桌面开发”工作负载的 Visual Studio 2022，以及首次运行 CM
 
 推荐直接从[最新 GitHub Release](https://github.com/Kuan-Mi/UnityDLSSNR/releases/latest)
 下载
-[`top.kuanmi.unityrhi.native-1.0.1.zip`](https://github.com/Kuan-Mi/UnityDLSSNR/releases/download/v1.0.1/top.kuanmi.unityrhi.native-1.0.1.zip)。
+[`top.kuanmi.unityrhi.native-1.0.2.zip`](https://github.com/Kuan-Mi/UnityDLSSNR/releases/download/v1.0.2/top.kuanmi.unityrhi.native-1.0.2.zip)。
 其中已经包含编译好的 Windows x64 原生包，无需安装 CMake、Visual Studio，
 也无需运行仓库中的构建脚本。
 
@@ -239,6 +248,13 @@ Unity 创建 D3D12 设备之前执行的预加载函数。
 Renderer Feature 会自动请求所需的深度纹理和运动矢量纹理。图像控制参数从
 当前相机混合后的 Volume 栈中读取，并可在运行时调整。默认 SDR Game 相机顺序为
 光栅 → NR → IUpscaler → 其余后处理。
+
+## XR 支持
+
+DLSS URP 包支持 XR 的 Multipass 和 Single-Pass Instanced 模式。DLSS 超分辨率
+会为左右眼分别维护 NGX 历史；DLSS 神经渲染会以每眼原生分辨率执行，同样维护
+各自的历史。请按 Unity 常规流程配置 XR Provider，保持 Windows 图形 API 为
+Direct3D 12，并使用上述相同的 URP/DLSS 配置步骤。
 
 ## 各包文档
 
