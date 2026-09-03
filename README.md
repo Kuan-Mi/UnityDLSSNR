@@ -7,7 +7,7 @@ resource barriers, and NVIDIA neural rendering features.
 
 This repository contains the managed UnityRHI package, its Windows x64 native
 runtime, and a Unity 6.3 URP integration for DLSS Super Resolution and DLSS 5
-Neural Rendering.
+Neural Rendering, with XR support.
 
 ![DLSS Neural Rendering running in Unity](01.png)
 
@@ -120,15 +120,6 @@ automatically. Image controls are read from the active camera's blended Volume
 stack and can be adjusted at runtime. Default SDR Game-camera order is
 raster → NR → IUpscaler → remaining post.
 
-## XR support
-
-The DLSS URP package supports XR rendering in both multipass and single-pass
-instanced modes. DLSS Super Resolution maintains a separate NGX history for
-each eye. DLSS Neural Rendering is evaluated at native resolution for each eye
-and likewise keeps per-eye history. Configure the XR provider normally in
-Unity, keep Direct3D 12 as the active Windows graphics API, and use the same
-URP/DLSS setup described above.
-
 ## Package documentation
 
 - [UnityRHI](Packages/top.kuanmi.unityrhi/README.md)
@@ -146,7 +137,7 @@ UnityRHI 是面向 Unity 的 Direct3D 12 渲染硬件接口和原生插件栈。
 无绑定资源、计算、显式资源屏障和 NVIDIA 神经渲染能力。
 
 本仓库包含 UnityRHI C# 包、Windows x64 原生运行时，以及面向 Unity 6.3 URP
-的 DLSS 超分辨率与 DLSS 5 神经渲染集成。
+的 DLSS 超分辨率与 DLSS 5 神经渲染集成，同时支持XR。
 
 ## 仓库结构
 
@@ -248,13 +239,6 @@ Unity 创建 D3D12 设备之前执行的预加载函数。
 Renderer Feature 会自动请求所需的深度纹理和运动矢量纹理。图像控制参数从
 当前相机混合后的 Volume 栈中读取，并可在运行时调整。默认 SDR Game 相机顺序为
 光栅 → NR → IUpscaler → 其余后处理。
-
-## XR 支持
-
-DLSS URP 包支持 XR 的 Multipass 和 Single-Pass Instanced 模式。DLSS 超分辨率
-会为左右眼分别维护 NGX 历史；DLSS 神经渲染会以每眼原生分辨率执行，同样维护
-各自的历史。请按 Unity 常规流程配置 XR Provider，保持 Windows 图形 API 为
-Direct3D 12，并使用上述相同的 URP/DLSS 配置步骤。
 
 ## 各包文档
 
