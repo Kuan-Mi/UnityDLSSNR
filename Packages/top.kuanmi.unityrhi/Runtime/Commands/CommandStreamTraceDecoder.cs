@@ -245,6 +245,15 @@ namespace UnityRhi
                             resources.Add(c.MotionVectors); resources.Add(c.Depth);
                             label = "DLSS Neural Rendering"; break;
                         }
+                        case CommandOpcode.DispatchDlss:
+                        {
+                            var c = Read<CommandWire.DlssDispatchPayload>(stream, offset); offset += SizeOf<CommandWire.DlssDispatchPayload>();
+                            args[0] = unchecked((ulong)c.InstanceId); args[1] = c.CurrentWidth; args[2] = c.CurrentHeight;
+                            args[3] = c.OutputWidth; args[4] = c.OutputHeight;
+                            resources.Add(c.Input); resources.Add(c.Output);
+                            resources.Add(c.MotionVectors); resources.Add(c.Depth);
+                            label = "DLSS Super Resolution"; break;
+                        }
                         default: return Array.Empty<CommandTraceEvent>();
                     }
 

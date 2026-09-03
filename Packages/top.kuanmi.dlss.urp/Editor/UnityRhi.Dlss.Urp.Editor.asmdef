@@ -1,9 +1,9 @@
 {
-  "name": "UnityRhi.DlssNr.Urp.Editor",
-  "rootNamespace": "UnityRhi.DlssNr.Urp.Editor",
+  "name": "UnityRhi.Dlss.Urp.Editor",
+  "rootNamespace": "UnityRhi.Dlss.Urp.Editor",
   "references": [
     "UnityRhi.Runtime",
-    "UnityRhi.DlssNr.Urp",
+    "UnityRhi.Dlss.Urp",
     "Unity.RenderPipelines.Core.Runtime",
     "Unity.RenderPipelines.Universal.Runtime",
     "Unity.RenderPipelines.Universal.Editor"
@@ -17,13 +17,13 @@
   "precompiledReferences": [],
   "autoReferenced": true,
   "defineConstraints": [
-    "UNITYRHI_DLSSNR_URP"
+    "UNITYRHI_DLSS_URP"
   ],
   "versionDefines": [
     {
       "name": "com.unity.render-pipelines.universal",
       "expression": "17.0.0",
-      "define": "UNITYRHI_DLSSNR_URP"
+      "define": "UNITYRHI_DLSS_URP"
     }
   ],
   "noEngineReferences": false

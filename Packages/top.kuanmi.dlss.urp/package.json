@@ -1,8 +1,8 @@
 {
-  "name": "top.kuanmi.dlss5.urp",
+  "name": "top.kuanmi.dlss.urp",
   "version": "0.1.0",
-  "displayName": "UnityRHI DLSS 5 Neural Rendering for URP",
-  "description": "A standalone full-resolution DLSS Neural Rendering post-process for Unity 6.3 URP. Uses UnityRHI and does not require RTX Path Tracing or DLSS Ray Reconstruction.",
+  "displayName": "UnityRHI DLSS for URP",
+  "description": "DLSS SuperSampling (IUpscaler) and DLSS 5 Neural Rendering for Unity 6.3 URP via UnityRHI native NGX.",
   "unity": "6000.3",
   "dependencies": {
     "com.unity.render-pipelines.universal": "17.0.0",
@@ -15,7 +15,12 @@
     "rendering",
     "urp",
     "dlss",
+    "dlaa",
+    "dlss-nr",
+    "super-resolution",
     "neural-rendering",
+    "iupscaler",
+    "anti-aliasing",
     "post-processing"
   ]
 }

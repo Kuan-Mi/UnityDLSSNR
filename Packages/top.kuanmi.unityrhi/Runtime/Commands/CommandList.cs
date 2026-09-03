@@ -63,6 +63,7 @@ namespace UnityRhi
         EndTimerQuery = 48,
         DispatchDlrr = 49,
         DispatchDlssNr = 50,
+        DispatchDlss = 51,
     }
 
     /// <summary>Result of <see cref="CommandList.Validate"/> (native dry-run decode).</summary>
@@ -349,6 +350,19 @@ namespace UnityRhi
             Retain(motionVectors);
             Retain(depth);
             WriteCommand(CommandOpcode.DispatchDlssNr, command);
+            _commandCount++;
+            InvalidateCachedState();
+        }
+
+        internal void DispatchDlss(in CommandWire.DlssDispatchPayload command,
+            Texture input, Texture output, Texture motionVectors, Texture depth)
+        {
+            RequireOpen();
+            Retain(input);
+            Retain(output);
+            Retain(motionVectors);
+            Retain(depth);
+            WriteCommand(CommandOpcode.DispatchDlss, command);
             _commandCount++;
             InvalidateCachedState();
         }

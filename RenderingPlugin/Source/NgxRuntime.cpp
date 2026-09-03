@@ -29,6 +29,8 @@ struct NgxState
     ID3D12Device* device = nullptr;
     NVSDK_NGX_Parameter* capabilities = nullptr;
     int32_t initResult = int32_t(NVSDK_NGX_Result_Fail);
+    int32_t dlssAvailable = 0;
+    int32_t dlssInitResult = int32_t(NVSDK_NGX_Result_Fail);
     int32_t dlrrAvailable = 0;
     int32_t dlrrInitResult = int32_t(NVSDK_NGX_Result_Fail);
     int32_t frameGenerationAvailable = 0;
@@ -88,6 +90,8 @@ void QueryCapability(NVSDK_NGX_Parameter* parameters, const char* name, T& value
 
 void ResetCapabilities()
 {
+    g_Ngx.dlssAvailable = 0;
+    g_Ngx.dlssInitResult = int32_t(NVSDK_NGX_Result_Fail);
     g_Ngx.dlrrAvailable = 0;
     g_Ngx.dlrrInitResult = int32_t(NVSDK_NGX_Result_Fail);
     g_Ngx.frameGenerationAvailable = 0;
@@ -144,6 +148,12 @@ bool InitializeNgx(ID3D12Device* device)
     else
     {
         QueryCapability(g_Ngx.capabilities,
+            NVSDK_NGX_Parameter_SuperSampling_Available,
+            g_Ngx.dlssAvailable);
+        QueryCapability(g_Ngx.capabilities,
+            NVSDK_NGX_Parameter_SuperSampling_FeatureInitResult,
+            g_Ngx.dlssInitResult);
+        QueryCapability(g_Ngx.capabilities,
             NVSDK_NGX_Parameter_SuperSamplingDenoising_Available,
             g_Ngx.dlrrAvailable);
         QueryCapability(g_Ngx.capabilities,
@@ -160,8 +170,9 @@ bool InitializeNgx(ID3D12Device* device)
             g_Ngx.multiFrameCountMax);
     }
 
-    LogInfo("[UnityRHI.NGX] Direct NGX initialized. DLRR=%d (0x%08X), "
+    LogInfo("[UnityRHI.NGX] Direct NGX initialized. DLSS=%d (0x%08X), DLRR=%d (0x%08X), "
             "DLSS-G=%d (0x%08X), MFG max=%u, feature path='%ls'.",
+        g_Ngx.dlssAvailable, unsigned(g_Ngx.dlssInitResult),
         g_Ngx.dlrrAvailable, unsigned(g_Ngx.dlrrInitResult),
         g_Ngx.frameGenerationAvailable, unsigned(g_Ngx.frameGenerationInitResult),
         g_Ngx.multiFrameCountMax, featureDirectory.c_str());
@@ -217,6 +228,18 @@ int32_t NgxInitResult()
 {
     std::scoped_lock lock(g_Ngx.mutex);
     return g_Ngx.initResult;
+}
+
+int32_t NgxDlssAvailable()
+{
+    std::scoped_lock lock(g_Ngx.mutex);
+    return g_Ngx.dlssAvailable;
+}
+
+int32_t NgxDlssInitResult()
+{
+    std::scoped_lock lock(g_Ngx.mutex);
+    return g_Ngx.dlssInitResult;
 }
 
 int32_t NgxDlrrAvailable()

@@ -22,6 +22,7 @@
 #include "CommandStream.h"
 #include "CommandSubmission.h"
 #include "Dlrr.h"
+#include "Dlss.h"
 #include "DlssNr.h"
 #include "DlssNrRuntime.h"
 #include "FrameGenerationDebug.h"
@@ -238,6 +239,7 @@ void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType eventType
         InitializeNgx(device);
         InitializeFrameGeneration(device);
         InitializeDlrr(device, g_State.d3d12->GetCommandQueue());
+        InitializeDlss(device);
         InitializeDlssNr(device);
         if (IDXGISwapChain* swapChain = g_State.d3d12->GetSwapChain())
             AdoptFrameGenerationSwapChain(
@@ -254,6 +256,7 @@ void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType eventType
     case kUnityGfxDeviceEventShutdown:
         g_State.replayContext.reset();
         ShutdownDlssNr();
+        ShutdownDlss();
         ShutdownDlrr();
         ShutdownFrameGeneration();
         ResetFrameGenerationHookDeviceObjects();
@@ -446,6 +449,7 @@ extern "C"
         using namespace unityrhi;
         g_State.replayContext.reset();
         ShutdownDlssNr();
+        ShutdownDlss();
         ShutdownDlrr();
         ShutdownFrameGeneration();
         ShutdownNgx();
@@ -526,6 +530,44 @@ extern "C"
     UNITY_INTERFACE_EXPORT int UNITY_INTERFACE_API UnityRhiGetDlssNrLastEvaluateResult()
     {
         return unityrhi::DlssNrLastEvaluateResult();
+    }
+
+    UNITY_INTERFACE_EXPORT int UNITY_INTERFACE_API UnityRhiCreateDlssInstance()
+    {
+        return unityrhi::CreateDlssInstance();
+    }
+
+    UNITY_INTERFACE_EXPORT void UNITY_INTERFACE_API UnityRhiDestroyDlssInstance(int instanceId)
+    {
+        unityrhi::DestroyDlssInstance(instanceId);
+    }
+
+    UNITY_INTERFACE_EXPORT int UNITY_INTERFACE_API UnityRhiGetNgxDlssAvailable()
+    {
+        return unityrhi::NgxDlssAvailable();
+    }
+
+    UNITY_INTERFACE_EXPORT int UNITY_INTERFACE_API UnityRhiGetNgxDlssInitResult()
+    {
+        return unityrhi::NgxDlssInitResult();
+    }
+
+    UNITY_INTERFACE_EXPORT int UNITY_INTERFACE_API UnityRhiGetDlssLastCreateResult()
+    {
+        return unityrhi::DlssLastCreateResult();
+    }
+
+    UNITY_INTERFACE_EXPORT int UNITY_INTERFACE_API UnityRhiGetDlssLastEvaluateResult()
+    {
+        return unityrhi::DlssLastEvaluateResult();
+    }
+
+    UNITY_INTERFACE_EXPORT int UNITY_INTERFACE_API UnityRhiQueryDlssOptimalSettings(
+        unsigned int outputWidth, unsigned int outputHeight, unsigned char upscalerMode,
+        unsigned int* renderWidth, unsigned int* renderHeight)
+    {
+        return unityrhi::QueryDlssOptimalSettings(outputWidth, outputHeight, upscalerMode,
+            renderWidth, renderHeight);
     }
 
     UNITY_INTERFACE_EXPORT int UNITY_INTERFACE_API UnityRhiGetNgxInitResult()

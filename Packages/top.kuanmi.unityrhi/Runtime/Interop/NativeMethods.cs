@@ -29,6 +29,29 @@ namespace UnityRhi.Interop
         internal static extern void UnityRhiDestroyDlrrInstance(int instanceId);
 
         [DllImport(PluginName)]
+        internal static extern int UnityRhiCreateDlssInstance();
+
+        [DllImport(PluginName)]
+        internal static extern void UnityRhiDestroyDlssInstance(int instanceId);
+
+        [DllImport(PluginName)]
+        internal static extern int UnityRhiGetNgxDlssAvailable();
+
+        [DllImport(PluginName)]
+        internal static extern int UnityRhiGetNgxDlssInitResult();
+
+        [DllImport(PluginName)]
+        internal static extern int UnityRhiGetDlssLastCreateResult();
+
+        [DllImport(PluginName)]
+        internal static extern int UnityRhiGetDlssLastEvaluateResult();
+
+        [DllImport(PluginName)]
+        internal static extern int UnityRhiQueryDlssOptimalSettings(
+            uint outputWidth, uint outputHeight, byte upscalerMode,
+            out uint renderWidth, out uint renderHeight);
+
+        [DllImport(PluginName)]
         internal static extern int UnityRhiCreateDlssNrInstance();
 
         [DllImport(PluginName)]

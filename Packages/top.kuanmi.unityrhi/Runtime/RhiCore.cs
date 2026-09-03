@@ -18,6 +18,40 @@ namespace UnityRhi
         /// <summary>Raw NVSDK_NGX_Result returned by direct D3D12 initialization.</summary>
         public static int NgxInitResult => NativeMethods.UnityRhiGetNgxInitResult();
 
+        /// <summary>True when the installed GPU/driver exposes NGX SuperSampling (DLSS).</summary>
+        public static bool IsNgxDlssAvailable => NativeMethods.UnityRhiGetNgxDlssAvailable() != 0;
+
+        /// <summary>Raw NGX feature-initialization result for SuperSampling.</summary>
+        public static int NgxDlssInitResult => NativeMethods.UnityRhiGetNgxDlssInitResult();
+
+        public static int DlssLastCreateResult => NativeMethods.UnityRhiGetDlssLastCreateResult();
+
+        public static int DlssLastEvaluateResult => NativeMethods.UnityRhiGetDlssLastEvaluateResult();
+
+        /// <summary>
+        /// Queries NGX for the optimal DLSS render resolution for a display size and quality mode.
+        /// Returns false when NGX is unavailable or the query fails.
+        /// </summary>
+        public static bool QueryDlssOptimalSettings(int outputWidth, int outputHeight,
+            UpscalerMode mode, out int renderWidth, out int renderHeight)
+        {
+            renderWidth = outputWidth;
+            renderHeight = outputHeight;
+            if (outputWidth <= 0 || outputHeight <= 0)
+                return false;
+            if (mode == UpscalerMode.NATIVE)
+                return true;
+            if (NativeMethods.UnityRhiQueryDlssOptimalSettings(
+                    (uint)outputWidth, (uint)outputHeight, (byte)mode,
+                    out uint nativeRenderWidth, out uint nativeRenderHeight) == 0)
+                return false;
+            if (nativeRenderWidth == 0 || nativeRenderHeight == 0)
+                return false;
+            renderWidth = (int)nativeRenderWidth;
+            renderHeight = (int)nativeRenderHeight;
+            return true;
+        }
+
         /// <summary>True when the installed GPU/driver exposes direct NGX Ray Reconstruction.</summary>
         public static bool IsNgxDlrrAvailable => NativeMethods.UnityRhiGetNgxDlrrAvailable() != 0;
 

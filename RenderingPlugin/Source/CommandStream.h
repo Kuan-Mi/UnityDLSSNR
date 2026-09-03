@@ -67,6 +67,7 @@ enum class CommandOpcode : uint32_t
     EndTimerQuery = 48,
     DispatchDlrr = 49,
     DispatchDlssNr = 50,
+    DispatchDlss = 51,
 };
 
 struct CommandStreamHeader

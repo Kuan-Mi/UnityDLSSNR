@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
-namespace UnityRhi.DlssNr.Urp
+namespace UnityRhi.Dlss.Urp
 {
     public enum DlssNrDebugMode
     {

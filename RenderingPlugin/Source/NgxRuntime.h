@@ -8,7 +8,7 @@ struct NVSDK_NGX_Parameter;
 
 namespace unityrhi
 {
-// NGX is process-global and its API is not thread-safe. DLRR and the upcoming
+// NGX is process-global and its API is not thread-safe. DLSS, DLRR and the
 // frame-generation present bridge share this owner and serialize every NGX
 // create/evaluate/release operation through NgxMutex().
 bool InitializeNgx(ID3D12Device* device);
@@ -23,6 +23,8 @@ NVSDK_NGX_Parameter* CreateNgxFeatureParameters();
 void DestroyNgxFeatureParameters(NVSDK_NGX_Parameter* parameters);
 
 int32_t NgxInitResult();
+int32_t NgxDlssAvailable();
+int32_t NgxDlssInitResult();
 int32_t NgxDlrrAvailable();
 int32_t NgxDlrrInitResult();
 int32_t NgxFrameGenerationAvailable();

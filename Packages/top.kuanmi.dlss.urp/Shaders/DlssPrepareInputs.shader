@@ -1,4 +1,4 @@
-Shader "Hidden/UnityRHI/DLSS-NR/PrepareInputs"
+Shader "Hidden/UnityRHI/DLSS/PrepareInputs"
 {
     SubShader
     {
@@ -16,14 +16,28 @@ Shader "Hidden/UnityRHI/DLSS-NR/PrepareInputs"
             #pragma vertex Vert
             #pragma fragment Frag
             #pragma multi_compile _ _USE_DRAW_PROCEDURAL
+            #pragma multi_compile _ _DLSS_COLOR_ARRAY
+            #pragma multi_compile _ _DLSS_DEPTH_ARRAY
+            #pragma multi_compile _ _DLSS_MOTION_ARRAY
 
-            // URP's Core include defines the XR-aware TEXTURE2D_X sampling
-            // macros and includes the shared point/linear clamp samplers.
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
-            TEXTURE2D_X(_DlssNrInputColor);
-            TEXTURE2D_X(_DlssNrInputDepth);
-            TEXTURE2D_X(_DlssNrInputMotion);
+            #if defined(_DLSS_COLOR_ARRAY)
+            TEXTURE2D_ARRAY(_DlssInputColor);
+            #else
+            TEXTURE2D(_DlssInputColor);
+            #endif
+            #if defined(_DLSS_DEPTH_ARRAY)
+            TEXTURE2D_ARRAY(_DlssInputDepth);
+            #else
+            TEXTURE2D(_DlssInputDepth);
+            #endif
+            #if defined(_DLSS_MOTION_ARRAY)
+            TEXTURE2D_ARRAY(_DlssInputMotion);
+            #else
+            TEXTURE2D(_DlssInputMotion);
+            #endif
+            float _DlssEyeSlice;
 
             struct Attributes
             {
@@ -35,7 +49,6 @@ Shader "Hidden/UnityRHI/DLSS-NR/PrepareInputs"
             {
                 float4 positionCS : SV_POSITION;
                 float2 uv : TEXCOORD0;
-                UNITY_VERTEX_OUTPUT_STEREO
             };
 
             struct Outputs
@@ -43,14 +56,12 @@ Shader "Hidden/UnityRHI/DLSS-NR/PrepareInputs"
                 float4 color : SV_Target0;
                 float2 motion : SV_Target1;
                 float depth : SV_Target2;
-                float4 fallback : SV_Target3;
             };
 
             Varyings Vert(Attributes input)
             {
                 Varyings output;
                 UNITY_SETUP_INSTANCE_ID(input);
-                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                 output.positionCS = GetFullScreenTriangleVertexPosition(input.vertexID);
                 output.uv = GetFullScreenTriangleTexCoord(input.vertexID);
                 return output;
@@ -58,19 +69,29 @@ Shader "Hidden/UnityRHI/DLSS-NR/PrepareInputs"
 
             Outputs Frag(Varyings input)
             {
-                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
                 Outputs output;
-                output.color = SAMPLE_TEXTURE2D_X(_DlssNrInputColor,
+                float slice = _DlssEyeSlice;
+                #if defined(_DLSS_COLOR_ARRAY)
+                output.color = SAMPLE_TEXTURE2D_ARRAY(_DlssInputColor,
+                    sampler_LinearClamp, input.uv, slice);
+                #else
+                output.color = SAMPLE_TEXTURE2D(_DlssInputColor,
                     sampler_LinearClamp, input.uv);
-                output.fallback = output.color;
-                // Preserve URP's raw device depth. Depth inversion is communicated
-                // separately to NGX through SystemInfo.usesReversedZBuffer.
-                output.depth = SAMPLE_TEXTURE2D_X(_DlssNrInputDepth,
+                #endif
+                #if defined(_DLSS_DEPTH_ARRAY)
+                output.depth = SAMPLE_TEXTURE2D_ARRAY(_DlssInputDepth,
+                    sampler_PointClamp, input.uv, slice).r;
+                #else
+                output.depth = SAMPLE_TEXTURE2D(_DlssInputDepth,
                     sampler_PointClamp, input.uv).r;
-                // URP motion is previous-to-current UV/NDC. The C# dispatch scale
-                // flips direction and converts it to full-resolution pixels.
-                output.motion = SAMPLE_TEXTURE2D_X(_DlssNrInputMotion,
+                #endif
+                #if defined(_DLSS_MOTION_ARRAY)
+                output.motion = SAMPLE_TEXTURE2D_ARRAY(_DlssInputMotion,
+                    sampler_PointClamp, input.uv, slice).xy;
+                #else
+                output.motion = SAMPLE_TEXTURE2D(_DlssInputMotion,
                     sampler_PointClamp, input.uv).xy;
+                #endif
                 return output;
             }
             ENDHLSL
@@ -88,14 +109,14 @@ Shader "Hidden/UnityRHI/DLSS-NR/PrepareInputs"
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
-            TEXTURE2D_X(_DlssNrInputDepth);
-            TEXTURE2D_X(_DlssNrInputMotion);
+            TEXTURE2D(_DlssInputDepth);
+            TEXTURE2D(_DlssInputMotion);
 
-            int _DlssNrDebugMode;
-            float _DlssNrDebugMotionScaleX;
-            float _DlssNrDebugMotionScaleY;
-            float _DlssNrDebugMotionRange;
-            float _DlssNrDebugDepthRange;
+            int _DlssDebugMode;
+            float _DlssDebugMotionScaleX;
+            float _DlssDebugMotionScaleY;
+            float _DlssDebugMotionRange;
+            float _DlssDebugDepthRange;
 
             struct DebugAttributes
             {
@@ -107,14 +128,12 @@ Shader "Hidden/UnityRHI/DLSS-NR/PrepareInputs"
             {
                 float4 positionCS : SV_POSITION;
                 float2 uv : TEXCOORD0;
-                UNITY_VERTEX_OUTPUT_STEREO
             };
 
             DebugVaryings VertDebug(DebugAttributes input)
             {
                 DebugVaryings output;
                 UNITY_SETUP_INSTANCE_ID(input);
-                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                 output.positionCS = GetFullScreenTriangleVertexPosition(input.vertexID);
                 output.uv = GetFullScreenTriangleTexCoord(input.vertexID);
                 return output;
@@ -131,21 +150,17 @@ Shader "Hidden/UnityRHI/DLSS-NR/PrepareInputs"
 
             float4 FragDebug(DebugVaryings input) : SV_Target
             {
-                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-
-                if (_DlssNrDebugMode == 1 || _DlssNrDebugMode == 2)
+                if (_DlssDebugMode == 1 || _DlssDebugMode == 2)
                 {
-                    float2 rawMotion = SAMPLE_TEXTURE2D_X(_DlssNrInputMotion,
+                    float2 rawMotion = SAMPLE_TEXTURE2D(_DlssInputMotion,
                         sampler_PointClamp, input.uv).xy;
                     float2 motionPixels = rawMotion * float2(
-                        _DlssNrDebugMotionScaleX, _DlssNrDebugMotionScaleY);
-                    float range = max(_DlssNrDebugMotionRange, 1e-4);
+                        _DlssDebugMotionScaleX, _DlssDebugMotionScaleY);
+                    float range = max(_DlssDebugMotionRange, 1e-4);
                     float magnitude = length(motionPixels) / range;
 
-                    if (_DlssNrDebugMode == 1)
+                    if (_DlssDebugMode == 1)
                     {
-                        // Zero motion is neutral gray. Red/green encode signed
-                        // current-to-previous X/Y motion; blue encodes magnitude.
                         return float4(
                             saturate(0.5 + motionPixels.x / (2.0 * range)),
                             saturate(0.5 + motionPixels.y / (2.0 * range)),
@@ -155,14 +170,56 @@ Shader "Hidden/UnityRHI/DLSS-NR/PrepareInputs"
                     return float4(MotionHeatmap(magnitude), 1.0);
                 }
 
-                float rawDepth = SAMPLE_TEXTURE2D_X(_DlssNrInputDepth,
+                float rawDepth = SAMPLE_TEXTURE2D(_DlssInputDepth,
                     sampler_PointClamp, input.uv).r;
-                if (_DlssNrDebugMode == 3)
+                if (_DlssDebugMode == 3)
                     return float4(rawDepth.xxx, 1.0);
 
                 float eyeDepth = LinearEyeDepth(rawDepth, _ZBufferParams);
-                float normalizedDepth = saturate(eyeDepth / max(_DlssNrDebugDepthRange, 1e-4));
+                float normalizedDepth = saturate(eyeDepth / max(_DlssDebugDepthRange, 1e-4));
                 return float4(normalizedDepth.xxx, 1.0);
+            }
+            ENDHLSL
+        }
+
+        Pass
+        {
+            Name "CopyToSlice"
+
+            HLSLPROGRAM
+            #pragma target 4.5
+            #pragma vertex VertCopy
+            #pragma fragment FragCopy
+            #pragma multi_compile _ _USE_DRAW_PROCEDURAL
+
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
+            TEXTURE2D(_DlssCopySource);
+
+            struct CopyAttributes
+            {
+                uint vertexID : SV_VertexID;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
+
+            struct CopyVaryings
+            {
+                float4 positionCS : SV_POSITION;
+                float2 uv : TEXCOORD0;
+            };
+
+            CopyVaryings VertCopy(CopyAttributes input)
+            {
+                CopyVaryings output;
+                UNITY_SETUP_INSTANCE_ID(input);
+                output.positionCS = GetFullScreenTriangleVertexPosition(input.vertexID);
+                output.uv = GetFullScreenTriangleTexCoord(input.vertexID);
+                return output;
+            }
+
+            float4 FragCopy(CopyVaryings input) : SV_Target
+            {
+                return SAMPLE_TEXTURE2D(_DlssCopySource, sampler_LinearClamp, input.uv);
             }
             ENDHLSL
         }

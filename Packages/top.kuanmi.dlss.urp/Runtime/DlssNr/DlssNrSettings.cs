@@ -1,4 +1,4 @@
-namespace UnityRhi.DlssNr.Urp
+namespace UnityRhi.Dlss.Urp
 {
     /// <summary>A per-camera snapshot of the blended DLSS-NR Volume values.</summary>
     internal readonly struct DlssNrSettings

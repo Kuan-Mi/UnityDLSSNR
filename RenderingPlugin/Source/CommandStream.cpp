@@ -5,6 +5,7 @@
 #include "CommandStream.h"
 #include "CommandStreamWire.h"
 #include "Dlrr.h"
+#include "Dlss.h"
 #include "DlssNr.h"
 #include "UnityRhiProfiler.h"
 
@@ -1094,6 +1095,31 @@ bool ReplayCommandStream(const void* data, ID3D12GraphicsCommandList* commandLis
             }
             break;
         }
+        case CommandOpcode::DispatchDlss:
+        {
+            wire::DlssDispatchPayload command{};
+            ok = reader.Read(command);
+            if (ok)
+            {
+                context.setTextureState(
+                    reinterpret_cast<Texture*>(uintptr_t(command.input)),
+                    ResourceStates::ShaderResource);
+                context.setTextureState(
+                    reinterpret_cast<Texture*>(uintptr_t(command.motionVectors)),
+                    ResourceStates::ShaderResource);
+                context.setTextureState(
+                    reinterpret_cast<Texture*>(uintptr_t(command.depth)),
+                    ResourceStates::ShaderResource);
+                context.setTextureState(
+                    reinterpret_cast<Texture*>(uintptr_t(command.output)),
+                    ResourceStates::UnorderedAccess);
+                context.commitBarriers();
+                ok = DispatchDlss(command, context.commandList);
+                if (ok)
+                    context.clearState();
+            }
+            break;
+        }
         default:
             LogError("[UnityRHI] Unknown command opcode %u.", uint32_t(opcode));
             return false;
@@ -1264,6 +1290,8 @@ bool SkipCommandPayload(Reader& reader, CommandOpcode opcode)
         return reader.Skip(sizeof(wire::DlrrDispatchPayload));
     case CommandOpcode::DispatchDlssNr:
         return reader.Skip(sizeof(wire::DlssNrDispatchPayload));
+    case CommandOpcode::DispatchDlss:
+        return reader.Skip(sizeof(wire::DlssDispatchPayload));
     default:
         return false;
     }

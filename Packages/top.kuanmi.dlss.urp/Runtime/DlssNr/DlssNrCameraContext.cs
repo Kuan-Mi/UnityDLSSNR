@@ -4,7 +4,7 @@ using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 using RhiTexture = UnityRhi.Texture;
 
-namespace UnityRhi.DlssNr.Urp
+namespace UnityRhi.Dlss.Urp
 {
     /// <summary>Persistent Unity/UnityRHI resources and NGX history for one camera.</summary>
     internal sealed class DlssNrCameraContext : IDisposable
@@ -111,23 +111,24 @@ namespace UnityRhi.DlssNr.Urp
             }
         }
 
-        internal DispatchParameters BeginFrame(Camera camera, int frameIndex, in DlssNrSettings settings)
+        internal DispatchParameters BeginFrame(int frameIndex, Vector3 position,
+            Quaternion rotation, in Matrix4x4 projection, in DlssNrSettings settings)
         {
             bool reset = !_hasHistory || frameIndex != _lastFrame + 1 ||
                 SettingsHash(settings) != _lastSettingsHash;
             if (_hasHistory)
             {
-                if (Vector3.Distance(_lastPosition, camera.transform.position) > settings.CameraCutDistance ||
-                    Quaternion.Angle(_lastRotation, camera.transform.rotation) > settings.CameraCutAngle ||
-                    ProjectionChanged(_lastProjection, camera.nonJitteredProjectionMatrix))
+                if (Vector3.Distance(_lastPosition, position) > settings.CameraCutDistance ||
+                    Quaternion.Angle(_lastRotation, rotation) > settings.CameraCutAngle ||
+                    ProjectionChanged(_lastProjection, projection))
                     reset = true;
             }
 
             _lastFrame = frameIndex;
             _lastSettingsHash = SettingsHash(settings);
-            _lastPosition = camera.transform.position;
-            _lastRotation = camera.transform.rotation;
-            _lastProjection = camera.nonJitteredProjectionMatrix;
+            _lastPosition = position;
+            _lastRotation = rotation;
+            _lastProjection = projection;
             _hasHistory = true;
             return new DispatchParameters(reset, Width, Height, settings);
         }

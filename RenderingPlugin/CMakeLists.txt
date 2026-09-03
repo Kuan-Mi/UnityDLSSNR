@@ -143,6 +143,8 @@ add_library(UnityRHINative SHARED
     Source/CommandSubmission.h
     Source/Dlrr.cpp
     Source/Dlrr.h
+    Source/Dlss.cpp
+    Source/Dlss.h
     Source/DlssNr.cpp
     Source/DlssNr.h
     Source/DlssNrRuntime.cpp

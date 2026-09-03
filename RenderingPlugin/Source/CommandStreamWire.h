@@ -108,6 +108,15 @@ struct DlssNrDispatchPayload
     uint8_t depthInverted, reset, useAutoMask, uiCorrection;
     uint8_t upscaling, preset, style;
 };
+struct DlssDispatchPayload
+{
+    uint64_t input, output, motionVectors, depth;
+    uint16_t outputWidth, outputHeight, currentWidth, currentHeight;
+    float cameraJitterX, cameraJitterY;
+    float motionVectorScaleX, motionVectorScaleY;
+    int32_t instanceId;
+    uint8_t reset, depthInverted, upscalerMode, preset;
+};
 #pragma pack(pop)
 
 static_assert(sizeof(UInt32Payload) == 4);
@@ -142,4 +151,5 @@ static_assert(sizeof(GraphicsStatePayload) == 96);
 static_assert(sizeof(VertexBufferBinding) == 20);
 static_assert(sizeof(DlrrDispatchPayload) == 215);
 static_assert(sizeof(DlssNrDispatchPayload) == 75);
+static_assert(sizeof(DlssDispatchPayload) == 64);
 }

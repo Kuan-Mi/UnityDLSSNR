@@ -218,5 +218,16 @@ namespace UnityRhi
             internal byte DepthInverted, Reset, UseAutoMask, UiCorrection;
             internal byte Upscaling, Preset, Style;
         }
+
+        [StructLayout(LayoutKind.Sequential, Pack = 1)]
+        internal struct DlssDispatchPayload
+        {
+            internal ulong Input, Output, MotionVectors, Depth;
+            internal ushort OutputWidth, OutputHeight, CurrentWidth, CurrentHeight;
+            internal float CameraJitterX, CameraJitterY;
+            internal float MotionVectorScaleX, MotionVectorScaleY;
+            internal int InstanceId;
+            internal byte Reset, DepthInverted, UpscalerMode, Preset;
+        }
     }
 }
