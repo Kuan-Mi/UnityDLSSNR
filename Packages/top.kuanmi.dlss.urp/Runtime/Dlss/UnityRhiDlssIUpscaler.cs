@@ -93,7 +93,9 @@ namespace UnityRhi.Dlss.Urp
                     $"NGX=0x{unchecked((uint)RhiCore.NgxDlssInitResult):X8}).");
             }
 
-            UnityEngine.Shader shader = UnityEngine.Shader.Find("Hidden/UnityRHI/DLSS/PrepareInputs");
+            UnityEngine.Shader shader = _options != null ? _options.prepareInputsShader : null;
+            if (shader == null)
+                shader = UnityEngine.Shader.Find("Hidden/UnityRHI/DLSS/PrepareInputs");
             if (shader != null)
             {
                 _prepareMaterial = CoreUtils.CreateEngineMaterial(shader);

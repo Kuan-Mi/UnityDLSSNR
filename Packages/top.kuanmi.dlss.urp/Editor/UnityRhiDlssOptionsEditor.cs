@@ -12,16 +12,20 @@ namespace UnityRhi.Dlss.Urp.Editor
         private SerializedProperty _qualityMode;
         private SerializedProperty _fixedResolutionMode;
         private SerializedProperty _preset;
+        private SerializedProperty _prepareInputsShader;
 
         private void OnEnable()
         {
             _qualityMode = serializedObject.FindProperty("qualityMode");
             _fixedResolutionMode = serializedObject.FindProperty("fixedResolutionMode");
             _preset = serializedObject.FindProperty("preset");
+            _prepareInputsShader = serializedObject.FindProperty("prepareInputsShader");
+            AssignDefaultShader();
         }
 
         public override void OnInspectorGUI()
         {
+            AssignDefaultShader();
             serializedObject.Update();
             EditorGUILayout.PropertyField(_fixedResolutionMode);
             if (_fixedResolutionMode.boolValue)
@@ -99,6 +103,20 @@ namespace UnityRhi.Dlss.Urp.Editor
             Undo.RecordObject(asset, "DLSS Render Scale");
             asset.renderScale = scale;
             EditorUtility.SetDirty(asset);
+        }
+
+        private void AssignDefaultShader()
+        {
+            if (_prepareInputsShader == null || _prepareInputsShader.objectReferenceValue != null)
+                return;
+            UnityEngine.Shader shader = AssetDatabase.LoadAssetAtPath<UnityEngine.Shader>(
+                "Packages/top.kuanmi.dlss.urp/Shaders/DlssPrepareInputs.shader");
+            if (shader == null)
+                return;
+            serializedObject.Update();
+            _prepareInputsShader.objectReferenceValue = shader;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(target);
         }
     }
 }

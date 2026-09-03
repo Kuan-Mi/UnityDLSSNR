@@ -21,6 +21,10 @@ namespace UnityRhi.Dlss.Urp
         [HideInInspector]
         public Vector2 motionVectorScale = Vector2.one;
 
+        [SerializeField, HideInInspector, Tooltip(
+            "Input preparation shader. Automatically resolved from the package so Player builds keep it.")]
+        public UnityEngine.Shader prepareInputsShader;
+
         /// <summary>
         /// URP Render Scale implied by a DLSS quality mode. Prefers NGX optimal
         /// settings when the plugin is available, otherwise NVIDIA's nominal ratios.
