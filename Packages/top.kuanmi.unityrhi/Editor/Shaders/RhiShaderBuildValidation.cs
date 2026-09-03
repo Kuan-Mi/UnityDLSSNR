@@ -343,6 +343,7 @@ namespace UnityRhi.EditorTools
         public override void PrepareForBuild(BuildPlayerContext buildPlayerContext)
         {
             RhiShaderBuildValidation.PrepareForBuild();
+            if (!Directory.Exists(RhiShaderBuildValidation.StagingPath)) return;
             buildPlayerContext.AddAdditionalPathToStreamingAssets(
                 RhiShaderBuildValidation.StagingPath, "UnityRhi");
         }
