@@ -7,6 +7,17 @@ using UnityEngine.Rendering.Universal;
 
 namespace UnityRhi.Dlss.Urp
 {
+    public enum DlssFgDebugView
+    {
+        Off,
+        DeviceDepth,
+        LinearDepth,
+        MotionVectors,
+        CameraMotion,
+        MotionError,
+        MotionComparison,
+    }
+
     /// <summary>
     /// Copies URP depth and motion into persistent textures and submits them to
     /// the native DLSS-G Present path. Color is taken from the swap chain at Present.
@@ -25,14 +36,17 @@ namespace UnityRhi.Dlss.Urp
         [Tooltip("Only process the camera that resolves the final camera-stack target.")]
         public bool finalCameraInStackOnly = true;
 
-        [Tooltip("Additional multiplier after URP motion is converted to current-to-previous normalized motion.")]
-        public Vector2 motionVectorScale = Vector2.one;
-
         [Tooltip("Camera movement larger than this in one rendered frame resets temporal history.")]
         public float cameraCutDistance = 5f;
 
         [Tooltip("Camera rotation larger than this in one rendered frame resets temporal history.")]
         public float cameraCutAngle = 45f;
+
+        [Tooltip("Editor/Game view used to validate the exact depth, motion and camera matrices submitted to DLSS-G.")]
+        public DlssFgDebugView debugView = DlssFgDebugView.Off;
+
+        [Min(1f), Tooltip("Pixel-motion magnitude mapped to the edge of the motion debug color range.")]
+        public float debugMotionRangePixels = 32f;
 
         [SerializeField, Tooltip("Input preparation shader. Automatically resolved from the package when possible.")]
         private UnityEngine.Shader prepareInputsShader;
@@ -100,16 +114,19 @@ namespace UnityRhi.Dlss.Urp
 
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
         {
+            bool debugActive = debugView != DlssFgDebugView.Off;
+            bool canSubmit = !Application.isEditor && RuntimeEnabled &&
+                RhiCore.IsD3D12Active && RhiCore.IsNgxFrameGenerationAvailable;
             string skip = null;
-            if (Application.isEditor)
-                skip = "editor";
-            else if (_prepareMaterial == null)
+            if (_prepareMaterial == null)
                 skip = "missing-shader";
-            else if (!RuntimeEnabled)
+            else if (Application.isEditor && !debugActive)
+                skip = "editor";
+            else if (!Application.isEditor && !RuntimeEnabled && !debugActive)
                 skip = "disabled";
-            else if (!RhiCore.IsD3D12Active)
+            else if (!Application.isEditor && !RhiCore.IsD3D12Active && !debugActive)
                 skip = "not-d3d12";
-            else if (!RhiCore.IsNgxFrameGenerationAvailable)
+            else if (!Application.isEditor && !RhiCore.IsNgxFrameGenerationAvailable && !debugActive)
                 skip = $"ngx-unavailable:0x{unchecked((uint)RhiCore.NgxFrameGenerationInitResult):X8}";
             else if (!IsSupportedCamera(renderingData.cameraData))
                 skip = "unsupported-camera";
@@ -123,7 +140,10 @@ namespace UnityRhi.Dlss.Urp
             }
 
             LogSkip(null, renderingData.cameraData);
-            ApplyPacing(true);
+            if (canSubmit)
+                ApplyPacing(true);
+            else
+                DisableFrameGeneration();
             _pass.renderPassEvent = renderPassEvent;
             _pass.ConfigureInput(ScriptableRenderPassInput.Depth | ScriptableRenderPassInput.Motion);
             renderer.EnqueuePass(_pass);
@@ -256,6 +276,18 @@ namespace UnityRhi.Dlss.Urp
         {
             private static readonly int InputDepthId = UnityEngine.Shader.PropertyToID("_DlssFgInputDepth");
             private static readonly int InputMotionId = UnityEngine.Shader.PropertyToID("_DlssFgInputMotion");
+            private static readonly int DepthScaleBiasId =
+                UnityEngine.Shader.PropertyToID("_DlssFgDepthScaleBias");
+            private static readonly int MotionScaleBiasId =
+                UnityEngine.Shader.PropertyToID("_DlssFgMotionScaleBias");
+            private static readonly int DebugDepthId = UnityEngine.Shader.PropertyToID("_DlssFgDebugDepth");
+            private static readonly int DebugMotionId = UnityEngine.Shader.PropertyToID("_DlssFgDebugMotion");
+            private static readonly int DebugClipToPrevClipId =
+                UnityEngine.Shader.PropertyToID("_DlssFgDebugClipToPrevClip");
+            private static readonly int DebugSizeId = UnityEngine.Shader.PropertyToID("_DlssFgDebugSize");
+            private static readonly int DebugParamsId = UnityEngine.Shader.PropertyToID("_DlssFgDebugParams");
+            private static readonly int DebugMotionScaleId =
+                UnityEngine.Shader.PropertyToID("_DlssFgDebugMotionScale");
             private readonly DlssFgRenderFeature _feature;
 
             private sealed class PreparePassData
@@ -283,6 +315,19 @@ namespace UnityRhi.Dlss.Urp
                 public int FrameIndex;
                 public bool Reset;
                 public bool ColorBuffersHdr;
+                public bool SubmitToNgx;
+            }
+
+            private sealed class DebugPassData
+            {
+                public TextureHandle Depth;
+                public TextureHandle Motion;
+                public Material Material;
+                public MaterialPropertyBlock Properties;
+                public Matrix4x4 ClipToPrevClip;
+                public Vector4 Size;
+                public Vector4 Params;
+                public Vector4 MotionScale;
             }
 
             private static bool s_loggedSubmit;
@@ -302,7 +347,8 @@ namespace UnityRhi.Dlss.Urp
                     return;
                 if (_feature.finalCameraInStackOnly && !cameraData.resolveFinalTarget)
                     return;
-                if (!_feature.RuntimeEnabled)
+                bool debugActive = _feature.debugView != DlssFgDebugView.Off;
+                if (!_feature.RuntimeEnabled && !debugActive)
                     return;
                 if (cameraData.xr.enabled)
                     return;
@@ -340,8 +386,14 @@ namespace UnityRhi.Dlss.Urp
                 }
 
                 Matrix4x4 view = cameraData.GetViewMatrix();
-                Matrix4x4 projection = camera.nonJitteredProjectionMatrix;
-                Matrix4x4 viewToClip = GL.GetGPUProjectionMatrix(projection, true);
+                // URP's MotionVectorsPersistentData uses camera.projectionMatrix as
+                // the no-jitter base, then applies cameraData's jitter separately.
+                // Use that exact base so ClipToPrevClip describes sourceMotion.
+                Matrix4x4 projection = camera.projectionMatrix;
+                // Depth and motion are copied into NGX's canonical top-left
+                // texture space below, so the submitted camera matrices must
+                // use the matching non-render-texture clip-space orientation.
+                Matrix4x4 viewToClip = GL.GetGPUProjectionMatrix(projection, false);
                 Matrix4x4 viewProj = viewToClip * view;
                 Vector3 position = camera.transform.position;
                 Quaternion rotation = camera.transform.rotation;
@@ -368,10 +420,9 @@ namespace UnityRhi.Dlss.Urp
                     passData.Right = camera.transform.right;
                     passData.Forward = camera.transform.forward;
                     passData.JitterPixels = ExtractJitterPixels(cameraData, projection, width, height);
-                    // URP stores previous-to-current motion in UV units (full-screen = 1).
-                    // NGX FG normalizes to [-1, 1] current-to-previous after mvecScale.
-                    passData.MotionScale = new Vector2(
-                        -settings.MotionVectorScale.x, -settings.MotionVectorScale.y);
+                    // DLSS-G consumes current-to-previous motion in pixels. URP
+                    // stores previous-to-current motion in normalized screen UV.
+                    passData.MotionScale = new Vector2(-width, -height);
                     passData.Near = Mathf.Max(1e-4f, camera.nearClipPlane);
                     passData.Far = camera.farClipPlane;
                     passData.Fov = camera.fieldOfView * Mathf.Deg2Rad;
@@ -381,6 +432,8 @@ namespace UnityRhi.Dlss.Urp
                     passData.FrameIndex = Time.frameCount;
                     passData.Reset = reset;
                     passData.ColorBuffersHdr = cameraData.isHDROutputActive;
+                    passData.SubmitToNgx = !Application.isEditor && _feature.RuntimeEnabled &&
+                        RhiCore.IsD3D12Active && RhiCore.IsNgxFrameGenerationAvailable;
                     builder.UseTexture(sourceDepth, AccessFlags.Read);
                     builder.UseTexture(sourceMotion, AccessFlags.Read);
                     builder.SetRenderAttachment(motion, 0, AccessFlags.WriteAll);
@@ -391,11 +444,65 @@ namespace UnityRhi.Dlss.Urp
                         data.Properties.Clear();
                         data.Properties.SetTexture(InputDepthId, data.Depth);
                         data.Properties.SetTexture(InputMotionId, data.Motion);
+                        data.Properties.SetVector(DepthScaleBiasId,
+                            GetNgxTextureScaleBias(rgContext, data.Depth));
+                        data.Properties.SetVector(MotionScaleBiasId,
+                            GetNgxTextureScaleBias(rgContext, data.Motion));
                         rgContext.cmd.DrawProcedural(Matrix4x4.identity, data.Material, 0,
                             MeshTopology.Triangles, 3, 1, data.Properties);
-                        SubmitInputs(data);
+                        if (data.SubmitToNgx)
+                            SubmitInputs(data);
                     });
                 }
+
+                if (debugActive && resources.activeColorTexture.IsValid())
+                {
+                    Matrix4x4 clipToPrevClip = prevViewProj * viewProj.inverse;
+                    using (IRasterRenderGraphBuilder builder =
+                        renderGraph.AddRasterRenderPass<DebugPassData>(
+                            "DLSS-G Validate Inputs", out DebugPassData passData, profilingSampler))
+                    {
+                        passData.Depth = depth;
+                        passData.Motion = motion;
+                        passData.Material = _feature._prepareMaterial;
+                        passData.Properties = new MaterialPropertyBlock();
+                        passData.ClipToPrevClip = clipToPrevClip;
+                        passData.Size = new Vector4(width, height, 1f / width, 1f / height);
+                        passData.Params = new Vector4((float)_feature.debugView,
+                            SystemInfo.usesReversedZBuffer ? 1f : 0f,
+                            Mathf.Max(1f, _feature.debugMotionRangePixels),
+                            Mathf.Max(1e-4f, camera.nearClipPlane));
+                        passData.MotionScale = new Vector4(-width, -height, 0f, 0f);
+                        builder.UseTexture(depth, AccessFlags.Read);
+                        builder.UseTexture(motion, AccessFlags.Read);
+                        builder.SetRenderAttachment(resources.activeColorTexture, 0, AccessFlags.WriteAll);
+                        builder.AllowPassCulling(false);
+                        builder.SetRenderFunc(static (DebugPassData data, RasterGraphContext rgContext) =>
+                        {
+                            data.Properties.Clear();
+                            data.Properties.SetTexture(DebugDepthId, data.Depth);
+                            data.Properties.SetTexture(DebugMotionId, data.Motion);
+                            data.Properties.SetMatrix(DebugClipToPrevClipId, data.ClipToPrevClip);
+                            data.Properties.SetVector(DebugSizeId, data.Size);
+                            data.Properties.SetVector(DebugParamsId, data.Params);
+                            data.Properties.SetVector(DebugMotionScaleId, data.MotionScale);
+                            rgContext.cmd.DrawProcedural(Matrix4x4.identity, data.Material, 1,
+                                MeshTopology.Triangles, 3, 1, data.Properties);
+                        });
+                    }
+                }
+            }
+
+            private static Vector4 GetNgxTextureScaleBias(
+                in RasterGraphContext context, in TextureHandle source)
+            {
+                // NGX consumes raw D3D resources using a top-left origin. Normalize
+                // Unity's logical texture orientation while copying into our inputs.
+                bool flipY = context.GetTextureUVOrigin(in source) ==
+                    TextureUVOrigin.BottomLeft;
+                return flipY
+                    ? new Vector4(1f, -1f, 0f, 1f)
+                    : new Vector4(1f, 1f, 0f, 0f);
             }
 
             private static bool IsTexArray(

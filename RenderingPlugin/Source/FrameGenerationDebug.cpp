@@ -43,7 +43,6 @@ struct FgState
     std::array<ComPtr<ID3D12Resource>, kRealSlotCount> outputReal;
     std::array<bool, kRealSlotCount> outputRealIsCopySource{{false, false}};
     uint32_t outputRealWriteIndex = 0;
-    uint32_t pacerRealSlot = UINT32_MAX;
     std::array<CommandContext, kCommandContextCount> commandContexts;
     ComPtr<ID3D12Fence> fence;
     HANDLE fenceEvent = nullptr;
@@ -160,7 +159,6 @@ void ReleaseFeatureLocked()
         g_Fg.outputRealIsCopySource[i] = false;
     }
     g_Fg.outputRealWriteIndex = 0;
-    g_Fg.pacerRealSlot = UINT32_MAX;
     g_Fg.outputIsShaderResource = false;
     g_Fg.featureColorWidth = 0;
     g_Fg.featureColorHeight = 0;
@@ -282,7 +280,6 @@ bool EnsureFeatureLocked(
     g_Fg.featureFormat = format;
     g_Fg.outputIsShaderResource = false;
     g_Fg.outputRealWriteIndex = 0;
-    g_Fg.pacerRealSlot = UINT32_MAX;
     g_Fg.forceReset = true;
     LogInfo("[UnityRHI][DLSS-G] Created NGX frame-generation feature: color=%ux%u format=%u render=%ux%u (2x real buffers).",
         g_Fg.featureColorWidth, g_Fg.featureColorHeight,
@@ -422,12 +419,29 @@ uint64_t GetRealPresentCount()
     return g_RealPresentCount.load(std::memory_order_relaxed);
 }
 
-uint32_t ConsumeFrameGenerationPacerRealSlot()
+bool WaitForFrameGenerationFence(uint64_t fenceValue)
 {
-    std::lock_guard lock(g_Fg.mutex);
-    const uint32_t slot = g_Fg.pacerRealSlot;
-    g_Fg.pacerRealSlot = UINT32_MAX;
-    return slot;
+    if (fenceValue == 0)
+        return false;
+
+    ComPtr<ID3D12Fence> fence;
+    {
+        std::lock_guard lock(g_Fg.mutex);
+        fence = g_Fg.fence;
+    }
+    if (!fence)
+        return false;
+    if (fence->GetCompletedValue() >= fenceValue)
+        return true;
+
+    const HANDLE event = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+    if (!event)
+        return false;
+    const HRESULT hr = fence->SetEventOnCompletion(fenceValue, event);
+    const bool completed = SUCCEEDED(hr) &&
+        WaitForSingleObject(event, 5000) == WAIT_OBJECT_0;
+    CloseHandle(event);
+    return completed;
 }
 
 void SubmitFrameGenerationInputs(const FrameGenerationInputs& inputs)
@@ -445,8 +459,10 @@ void SubmitFrameGenerationInputs(const FrameGenerationInputs& inputs)
 
 FrameGenerationPresentAction EvaluateFrameGeneration(
     IDXGISwapChain3* presentSwapChain, ID3D12CommandQueue* presentQueue,
-    ID3D12Resource* colorBuffer)
+    ID3D12Resource* colorBuffer, FrameGenerationPresentInfo* presentInfo)
 {
+    if (presentInfo)
+        *presentInfo = {};
     if (!IsFrameGenerationEnabled() || !presentSwapChain || !presentQueue ||
         !IsNgxInitialized() || NgxFrameGenerationAvailable() != 1)
         return FrameGenerationPresentAction::None;
@@ -638,14 +654,18 @@ FrameGenerationPresentAction EvaluateFrameGeneration(
                 if (FAILED(hr))
                     return FrameGenerationPresentAction::None;
 
-                // No CPU wait: Present is queued on the same graphics queue after
-                // this Execute, so the GPU orders Evaluate/copy before the flip.
+                // Do not block Unity's render thread. The asynchronous presenter
+                // waits for this exact fence before presenting the generated frame.
                 g_Fg.outputIsShaderResource = true;
                 g_Fg.outputRealIsCopySource[realSlot] = true;
-                g_Fg.pacerRealSlot = realSlot;
                 g_Fg.outputRealWriteIndex = (realSlot + 1) % kRealSlotCount;
                 g_Fg.lastEvaluatedFrame = g_Fg.inputs.frameId;
                 g_Fg.forceReset = false;
+                if (presentInfo)
+                {
+                    presentInfo->realSlot = realSlot;
+                    presentInfo->readyFenceValue = signalValue;
+                }
                 return FrameGenerationPresentAction::Insert;
             }
         }

@@ -87,7 +87,10 @@ int64_t HalfFrameTicks()
     int64_t half = g_Pacing.frameWorkEma > 0 ?
         g_Pacing.frameWorkEma / 2 : g_Pacing.frequency / 120;
     const int64_t minTicks = g_Pacing.frequency / 2000; // 0.5ms
-    const int64_t maxTicks = g_Pacing.frequency / 30;   // ~33ms half → don't ratchet to 20fps
+    // Cap at 100ms half so a deliberate low render rate (e.g. ~10 FPS sleep)
+    // still paces generated and real evenly. The old 33ms ceiling made the
+    // generated frame flash for ~1/3 of a 100ms Unity frame.
+    const int64_t maxTicks = g_Pacing.frequency / 10; // 100ms
     if (half < minTicks)
         half = minTicks;
     if (half > maxTicks)
@@ -225,8 +228,8 @@ public:
         LogInfo("[UnityRHI][DLSS-G] Unity now presents through FG proxy "
             "(Unity BufferCount=%u, real BufferCount=%u, %ux%u).",
             unityBufferCount_, desc.BufferCount, desc.Width, desc.Height);
-        LogInfo("[UnityRHI][DLSS-G] FG pacer thread started; retained frames Present "
-            "asynchronously from Unity's Present.");
+        LogInfo("[UnityRHI][DLSS-G] FG presenter thread started; generated and retained "
+            "frames Present asynchronously from Unity's Present.");
         return S_OK;
     }
 
@@ -695,11 +698,12 @@ private:
         }
 
         FrameGenerationPresentAction action = FrameGenerationPresentAction::None;
+        FrameGenerationPresentInfo presentInfo{};
         int64_t evaluateTicks = 0;
         if (color && queue_ && real3_)
         {
             const int64_t evaluateStart = QpcNow();
-            action = EvaluateFrameGeneration(real3_.Get(), queue_.Get(), color);
+            action = EvaluateFrameGeneration(real3_.Get(), queue_.Get(), color, &presentInfo);
             evaluateTicks = QpcNow() - evaluateStart;
         }
 
@@ -715,22 +719,18 @@ private:
                     syncInterval);
             }
 
-            // Present the generated frame immediately. Only the pacer thread waits
-            // for the half-interval before presenting the retained real frame.
-            const HRESULT generated = CallRealPresent(0, flags, nullptr, PresentKind::Generated);
-            if (FAILED(generated))
+            if (presentInfo.realSlot == UINT32_MAX || presentInfo.readyFenceValue == 0)
             {
-                LogError("[UnityRHI][DLSS-G] Present of generated frame failed (0x%08X).",
-                    static_cast<unsigned>(generated));
+                LogError("[UnityRHI][DLSS-G] Evaluate succeeded without presenter synchronization data.");
                 g_Pacing.lastPresentEndQpc = QpcNow();
-                return generated;
+                return E_FAIL;
             }
 
             NoteFrameWorkSample(unityGapTicks, evaluateTicks);
             halfTicks = HalfFrameTicks();
-            const uint32_t realSlot = ConsumeFrameGenerationPacerRealSlot();
-            SchedulePacer(QpcNow() + halfTicks, flags, realSlot);
-            result = generated;
+            SchedulePacer(halfTicks, flags, presentInfo.realSlot,
+                presentInfo.readyFenceValue);
+            result = S_OK;
         }
         else
         {
@@ -785,13 +785,16 @@ private:
         });
     }
 
-    void SchedulePacer(int64_t presentAtQpc, UINT flags, uint32_t realSlot)
+    void SchedulePacer(
+        int64_t halfTicks, UINT flags, uint32_t realSlot,
+        uint64_t readyFenceValue)
     {
         {
             std::lock_guard lock(pacerMutex_);
-            pacerTargetQpc_ = presentAtQpc;
+            pacerHalfTicks_ = halfTicks;
             pacerFlags_ = flags;
             pacerRealSlot_ = realSlot;
+            pacerReadyFenceValue_ = readyFenceValue;
             pacerPending_ = true;
             pacerBusy_ = true;
         }
@@ -816,18 +819,38 @@ private:
     {
         for (;;)
         {
-            int64_t target = 0;
+            int64_t halfTicks = 0;
             UINT flags = 0;
             uint32_t realSlot = UINT32_MAX;
+            uint64_t readyFenceValue = 0;
             {
                 std::unique_lock lock(pacerMutex_);
                 pacerCv_.wait(lock, [this] { return pacerStop_.load(std::memory_order_acquire) || pacerPending_; });
                 if (pacerStop_.load(std::memory_order_acquire) && !pacerPending_)
                     break;
-                target = pacerTargetQpc_;
+                halfTicks = pacerHalfTicks_;
                 flags = pacerFlags_;
                 realSlot = pacerRealSlot_;
+                readyFenceValue = pacerReadyFenceValue_;
                 pacerPending_ = false;
+            }
+
+            if (!WaitForFrameGenerationFence(readyFenceValue))
+            {
+                LogError("[UnityRHI][DLSS-G] Timed out waiting for generated-frame GPU work.");
+            }
+            const HRESULT generated =
+                CallRealPresent(0, flags, nullptr, PresentKind::Generated);
+            int64_t target = QpcNow();
+            if (FAILED(generated))
+            {
+                LogError("[UnityRHI][DLSS-G] Present of generated frame failed (0x%08X).",
+                    static_cast<unsigned>(generated));
+            }
+            else
+            {
+                const int64_t genFlipQpc = QpcNow();
+                target = genFlipQpc + halfTicks;
             }
 
             WaitUntilQpc(target, &pacerStop_);
@@ -842,8 +865,10 @@ private:
             {
                 const HRESULT hr = CallRealPresent(0, flags, nullptr, PresentKind::Real);
                 if (FAILED(hr))
+                {
                     LogError("[UnityRHI][DLSS-G] Present of retained real frame failed (0x%08X).",
                         static_cast<unsigned>(hr));
+                }
             }
 
             {
@@ -882,9 +907,10 @@ private:
     std::atomic<bool> pacerStop_{false};
     bool pacerPending_ = false;
     bool pacerBusy_ = false;
-    int64_t pacerTargetQpc_ = 0;
+    int64_t pacerHalfTicks_ = 0;
     UINT pacerFlags_ = 0;
     uint32_t pacerRealSlot_ = UINT32_MAX;
+    uint64_t pacerReadyFenceValue_ = 0;
 };
 } // namespace
 

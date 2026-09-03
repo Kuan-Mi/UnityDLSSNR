@@ -67,19 +67,28 @@ enum class FrameGenerationPresentAction
     Insert = 2,
 };
 
+struct FrameGenerationPresentInfo
+{
+    uint32_t realSlot = UINT32_MAX;
+    uint64_t readyFenceValue = 0;
+};
+
 // presentSwapChain is the real DXGI chain we Present onto.
 // colorBuffer is Unity's current rendered image (proxy GetBuffer). When null,
 // the real chain's current backbuffer is used (replace-only fallback).
 FrameGenerationPresentAction EvaluateFrameGeneration(
     IDXGISwapChain3* presentSwapChain,
     ID3D12CommandQueue* presentQueue,
-    ID3D12Resource* colorBuffer);
+    ID3D12Resource* colorBuffer,
+    FrameGenerationPresentInfo* presentInfo = nullptr);
+
+// Waits for the GPU work that produced the generated and retained real frames.
+// Intended for the asynchronous presenter thread, never the Unity render thread.
+bool WaitForFrameGenerationFence(uint64_t fenceValue);
 
 // Copies the retained real frame from the given ping-pong slot into the next
 // backbuffer. Does not CPU-wait; Present on the same queue orders after the copy.
 bool CopyFrameGenerationRetainedReal(
     IDXGISwapChain3* swapChain, ID3D12CommandQueue* presentQueue, uint32_t realSlot);
 
-// Slot written by the most recent successful Evaluate (for the pacer thread).
-uint32_t ConsumeFrameGenerationPacerRealSlot();
 }
