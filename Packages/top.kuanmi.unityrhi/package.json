@@ -15,6 +15,6 @@
   ],
   "dependencies": {
     "com.unity.mathematics": "1.2.6",
-    "top.kuanmi.unityrhi.native": "1.0.2"
+    "top.kuanmi.unityrhi.native": "1.0.3"
   }
 }

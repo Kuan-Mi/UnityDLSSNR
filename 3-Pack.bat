@@ -21,7 +21,7 @@ echo Packing native UPM into "%DST%"
 if exist "%DST%" rd /q /s "%DST%"
 mkdir "%DST%" >nul
 
-robocopy "%SRC%" "%DST%" /E /NFL /NDL /NJH /NJS /nc /ns /np /XF *.dll >nul
+robocopy "%SRC%" "%DST%" /E /NFL /NDL /NJH /NJS /nc /ns /np /XF *.dll *.pdb >nul
 if %ERRORLEVEL% GEQ 8 exit /B 1
 
 if not exist "%PLUGINS%\D3D12" mkdir "%PLUGINS%\D3D12"

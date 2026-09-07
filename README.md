@@ -39,7 +39,7 @@ network access during initial CMake configuration.
 ## Download the prebuilt native package
 
 The recommended option is to download
-[`top.kuanmi.unityrhi.native-1.0.2.zip`](https://github.com/Kuan-Mi/UnityDLSSNR/releases/download/v1.0.2/top.kuanmi.unityrhi.native-1.0.2.zip)
+[`top.kuanmi.unityrhi.native-1.0.3.zip`](https://github.com/Kuan-Mi/UnityDLSSNR/releases/download/v1.0.3/top.kuanmi.unityrhi.native-1.0.3.zip)
 from the [latest GitHub Release](https://github.com/Kuan-Mi/UnityDLSSNR/releases/latest).
 It contains the prebuilt Windows x64 native package, so CMake, Visual Studio,
 and the repository build scripts are not required.
@@ -174,7 +174,7 @@ C++ 的桌面开发”工作负载的 Visual Studio 2022，以及首次运行 CM
 
 推荐直接从[最新 GitHub Release](https://github.com/Kuan-Mi/UnityDLSSNR/releases/latest)
 下载
-[`top.kuanmi.unityrhi.native-1.0.2.zip`](https://github.com/Kuan-Mi/UnityDLSSNR/releases/download/v1.0.2/top.kuanmi.unityrhi.native-1.0.2.zip)。
+[`top.kuanmi.unityrhi.native-1.0.3.zip`](https://github.com/Kuan-Mi/UnityDLSSNR/releases/download/v1.0.3/top.kuanmi.unityrhi.native-1.0.3.zip)。
 其中已经包含编译好的 Windows x64 原生包，无需安装 CMake、Visual Studio，
 也无需运行仓库中的构建脚本。
 
