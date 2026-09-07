@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstddef>
 
 struct ID3D12CommandQueue;
 struct ID3D12Device;
@@ -47,12 +48,22 @@ struct FrameGenerationInputs
 #pragma pack(pop)
 
 static_assert(sizeof(FrameGenerationInputs) == 400);
+static_assert(offsetof(FrameGenerationInputs, frameId) == 40);
+static_assert(offsetof(FrameGenerationInputs, cameraViewToClip) == 48);
+static_assert(offsetof(FrameGenerationInputs, clipToPrevClip) == 176);
+static_assert(offsetof(FrameGenerationInputs, cameraPos) == 304);
+static_assert(offsetof(FrameGenerationInputs, jitterX) == 352);
+static_assert(offsetof(FrameGenerationInputs, colorBuffersHdr) == 396);
 
 bool InitializeFrameGeneration(ID3D12Device* device);
 void ShutdownFrameGeneration();
 void SetFrameGenerationEnabled(bool enabled);
 bool IsFrameGenerationEnabled();
 void SubmitFrameGenerationInputs(const FrameGenerationInputs& inputs);
+uintptr_t CreateFrameGenerationSubmission(const FrameGenerationInputs& inputs);
+void DestroyFrameGenerationSubmission(uintptr_t token);
+void ExecuteFrameGenerationSubmission(uintptr_t token);
+bool GetFrameGenerationSubmissionInputs(uintptr_t token, FrameGenerationInputs& inputs);
 void NoteDisplayedPresent();
 void NoteGeneratedPresent();
 void NoteRealPresent();

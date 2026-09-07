@@ -101,6 +101,34 @@ namespace UnityRhi
             FrameGenerationInputs.Submit(inputs);
 
         /// <summary>
+        /// Records a one-shot submission after this frame's input copies. Native
+        /// code owns the packet/resources until the event publishes them on the
+        /// submission thread, in order with Present. Execute the buffer once.
+        /// </summary>
+        public static void SubmitFrameGenerationInputs(CommandBuffer commandBuffer,
+            in FrameGenerationInputs inputs)
+        {
+            if (commandBuffer == null)
+                throw new ArgumentNullException(nameof(commandBuffer));
+            IntPtr callback = RenderEventFunc;
+            IntPtr token = NativeMethods.UnityRhiCreateFrameGenerationSubmission(in inputs);
+            if (token == IntPtr.Zero)
+                throw new InvalidOperationException("Could not retain DLSS-G frame inputs.");
+            try
+            {
+                commandBuffer.IssuePluginEventAndData(callback,
+                    NativeMethods.EventPrepareFrameGenerationInputs, token);
+                commandBuffer.IssuePluginEventAndData(callback,
+                    NativeMethods.EventSubmitFrameGenerationInputs, token);
+            }
+            catch
+            {
+                NativeMethods.UnityRhiDestroyFrameGenerationSubmission(token);
+                throw;
+            }
+        }
+
+        /// <summary>
         /// DXGI Present count observed by the plugin (generated + real frames).
         /// Use this for displayed FPS; Unity's Time.deltaTime only counts rendered frames.
         /// </summary>

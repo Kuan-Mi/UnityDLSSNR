@@ -330,6 +330,11 @@ namespace UnityRhi.Dlss.Urp
                 public Vector4 MotionScale;
             }
 
+            private sealed class SubmitPassData
+            {
+                public PreparePassData Inputs;
+            }
+
             private static bool s_loggedSubmit;
 
             internal DlssFgPass(DlssFgRenderFeature feature)
@@ -390,6 +395,10 @@ namespace UnityRhi.Dlss.Urp
                 // the no-jitter base, then applies cameraData's jitter separately.
                 // Use that exact base so ClipToPrevClip describes sourceMotion.
                 Matrix4x4 projection = camera.projectionMatrix;
+                // Match URP's overlay viewport adjustment as well as its base
+                // projection. camera.nonJitteredProjectionMatrix is not URP's base.
+                if (cameraData.renderType == CameraRenderType.Overlay && !camera.orthographic)
+                    projection.m00 = cameraData.GetProjectionMatrix().m00;
                 // Depth and motion are copied into NGX's canonical top-left
                 // texture space below, so the submitted camera matrices must
                 // use the matching non-render-texture clip-space orientation.
@@ -399,14 +408,17 @@ namespace UnityRhi.Dlss.Urp
                 Quaternion rotation = camera.transform.rotation;
                 context.BeginFrame(Time.frameCount, position, rotation, projection, viewProj,
                     settings, out Matrix4x4 prevViewProj, out bool reset);
+                Vector2 jitterPixels = ExtractJitterPixels(cameraData, projection, width, height);
 
                 TextureHandle motion = renderGraph.ImportTexture(context.MotionHandle);
                 TextureHandle depth = renderGraph.ImportTexture(context.DepthHandle);
 
+                PreparePassData preparedInputs;
                 using (IRasterRenderGraphBuilder builder =
                     renderGraph.AddRasterRenderPass<PreparePassData>(
                         "DLSS-G Prepare Inputs", out PreparePassData passData, profilingSampler))
                 {
+                    preparedInputs = passData;
                     passData.Depth = sourceDepth;
                     passData.Motion = sourceMotion;
                     passData.Material = _feature._prepareMaterial;
@@ -419,7 +431,7 @@ namespace UnityRhi.Dlss.Urp
                     passData.Up = camera.transform.up;
                     passData.Right = camera.transform.right;
                     passData.Forward = camera.transform.forward;
-                    passData.JitterPixels = ExtractJitterPixels(cameraData, projection, width, height);
+                    passData.JitterPixels = jitterPixels;
                     // DLSS-G consumes current-to-previous motion in pixels. URP
                     // stores previous-to-current motion in normalized screen UV.
                     passData.MotionScale = new Vector2(-width, -height);
@@ -450,8 +462,6 @@ namespace UnityRhi.Dlss.Urp
                             GetNgxTextureScaleBias(rgContext, data.Motion));
                         rgContext.cmd.DrawProcedural(Matrix4x4.identity, data.Material, 0,
                             MeshTopology.Triangles, 3, 1, data.Properties);
-                        if (data.SubmitToNgx)
-                            SubmitInputs(data);
                     });
                 }
 
@@ -491,6 +501,26 @@ namespace UnityRhi.Dlss.Urp
                         });
                     }
                 }
+
+                if (preparedInputs.SubmitToNgx)
+                {
+                    // Outside a native raster pass, after all input/debug reads.
+                    // The native recording event establishes the final SRV state;
+                    // the submission event publishes the matching camera packet.
+                    using (var builder = renderGraph.AddUnsafePass<SubmitPassData>(
+                        "DLSS-G Submit Inputs", out var passData, profilingSampler))
+                    {
+                        passData.Inputs = preparedInputs;
+                        builder.UseTexture(depth, AccessFlags.ReadWrite);
+                        builder.UseTexture(motion, AccessFlags.ReadWrite);
+                        builder.AllowPassCulling(false);
+                        builder.SetRenderFunc(static (SubmitPassData data, UnsafeGraphContext rgContext) =>
+                        {
+                            CommandBuffer cmd = CommandBufferHelpers.GetNativeCommandBuffer(rgContext.cmd);
+                            SubmitInputs(data.Inputs, cmd);
+                        });
+                    }
+                }
             }
 
             private static Vector4 GetNgxTextureScaleBias(
@@ -516,11 +546,14 @@ namespace UnityRhi.Dlss.Urp
                 Matrix4x4 jittered = cameraData.GetProjectionMatrix();
                 Matrix4x4 translation = jittered * unjitteredProjection.inverse;
                 return new Vector2(
-                    translation.m03 * 0.5f * width,
+                    // The rasterized image shifts by (+x,+y) in URP's flipped
+                    // RT, then the preparation copy reverses Y. Sampling offsets
+                    // are the opposite image displacement: (-x,+y) in NGX space.
+                    -translation.m03 * 0.5f * width,
                     translation.m13 * 0.5f * height);
             }
 
-            private static void SubmitInputs(PreparePassData data)
+            private static void SubmitInputs(PreparePassData data, CommandBuffer commandBuffer)
             {
                 IntPtr depth = data.Context.DepthRt.GetNativeTexturePtr();
                 IntPtr motion = data.Context.MotionRt.GetNativeTexturePtr();
@@ -549,8 +582,8 @@ namespace UnityRhi.Dlss.Urp
                     RenderHeight = (uint)data.Context.Height,
                     ColorWidth = (uint)data.ColorWidth,
                     ColorHeight = (uint)data.ColorHeight,
-                    DepthState = FrameGenerationInputs.D3D12ResourceStateRenderTarget,
-                    MotionVectorsState = FrameGenerationInputs.D3D12ResourceStateRenderTarget,
+                    DepthState = FrameGenerationInputs.D3D12ResourceStateNonPixelShaderResource,
+                    MotionVectorsState = FrameGenerationInputs.D3D12ResourceStateNonPixelShaderResource,
                     FrameId = unchecked((ulong)Mathf.Max(0, data.FrameIndex)),
                     CameraViewToClip = FrameGenerationMatrix.FromUnity(data.ViewToClip),
                     ClipToCameraView = FrameGenerationMatrix.FromUnity(data.ViewToClip.inverse),
@@ -574,7 +607,7 @@ namespace UnityRhi.Dlss.Urp
                     ColorBuffersHdr = data.ColorBuffersHdr ? 1u : 0u,
                 };
                 RhiCore.SetFrameGenerationEnabled(true);
-                RhiCore.SubmitFrameGenerationInputs(in inputs);
+                RhiCore.SubmitFrameGenerationInputs(commandBuffer, in inputs);
             }
         }
     }

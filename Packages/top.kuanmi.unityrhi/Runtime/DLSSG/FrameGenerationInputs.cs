@@ -6,9 +6,9 @@ using UnityRhi.Interop;
 namespace UnityRhi
 {
     /// <summary>
-    /// Row-major, post-multiply (v' = v * M) 4x4 matching
-    /// <c>NVSDK_NGX_DLSSG_Opt_Eval_Params</c>. Unity's column-major
-    /// <see cref="Matrix4x4"/> memory layout is already that transform.
+    /// NGX uses row vectors (v' = v * M), Unity uses column vectors (v' = M * v).
+    /// Packing Unity's columns as NGX's rows transposes the mathematical matrix
+    /// exactly once. The C++ memcpy must not transpose these bytes again.
     /// </summary>
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct FrameGenerationMatrix
@@ -37,6 +37,7 @@ namespace UnityRhi
     {
         public const uint D3D12ResourceStateCommon = 0;
         public const uint D3D12ResourceStateRenderTarget = 0x4;
+        public const uint D3D12ResourceStateNonPixelShaderResource = 0x40;
 
         public IntPtr Depth;
         public IntPtr MotionVectors;
@@ -55,8 +56,10 @@ namespace UnityRhi
         public Vector3 CameraUp;
         public Vector3 CameraRight;
         public Vector3 CameraFwd;
+        // Sampling offsets, in pixels of the submitted top-left depth/MV image.
         public float JitterX;
         public float JitterY;
+        // Direct NGX expects pixels, unlike Streamline's normalized mvecScale.
         public float MotionVectorScaleX;
         public float MotionVectorScaleY;
         public float CameraNear;
