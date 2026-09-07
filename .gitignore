@@ -2,6 +2,7 @@
 _Bin/
 _Build/
 Build/
+doc/
 
 # Native build (legacy in-tree)
 RenderingPlugin/build/
