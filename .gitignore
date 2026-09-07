@@ -2,6 +2,7 @@
 _Bin/
 _Build/
 Build/
+doc/
 
 # Native build (legacy in-tree)
 RenderingPlugin/build/
@@ -25,3 +26,5 @@ CMakeUserPresets.json
 # OS
 Thumbs.db
 Desktop.ini
+
+Editor.log

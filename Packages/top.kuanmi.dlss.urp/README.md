@@ -57,6 +57,22 @@ Depth/MV stay at render resolution, so Frame Generation can stack with UnityRHI
 DLSS Super Resolution. The interpolated frames are generated from the displayed
 backbuffer after post-processing.
 
+### Frame Generation input validation
+
+Set **Debug View** on the DLSS Frame Generation renderer feature to inspect the
+prepared inputs directly in the Editor Game view. This does not run frame
+generation in the Editor.
+
+- **Device Depth** displays the unmodified hardware depth submitted to NGX.
+- **Linear Depth** linearizes that same value only for easier visual inspection.
+- **Motion Vectors** displays URP motion after conversion to current-to-previous pixels.
+- **Camera Motion** reconstructs the expected static-scene motion from device depth and `ClipToPrevClip`.
+- **Motion Error** is green below 0.25 px, transitions to red above 1 px, and marks invalid/background depth blue.
+- **Motion Comparison** places texture motion on the left and matrix-predicted motion on the right.
+
+The prepared resources are `R32_SFloat` device depth and `R16G16_SFloat`
+motion. Both use top-left screen orientation. Matrices are unjittered.
+
 ## Neural Rendering setup
 
 1. Open the Universal Renderer Data used by the active URP asset.
@@ -130,6 +146,19 @@ Scene 视图保持原生分辨率；只有 Game 相机协商更低的预放大�
 3. 将渲染阶段保持为 **After Rendering Post Processing**。该通道只拷贝深度和运动矢量，插值颜色来自交换链 Present。在 Feature 上勾选 **Enable Frame Generation**（Player 里也可按 F8 切换）。没有 Volume。
 
 开启后会关闭 VSync 并取消 `Application.targetFrameRate` 限制。默认只处理相机堆栈中的最终 Game 相机。XR 以及渲染到 `targetTexture` 的相机会被跳过。深度/运动矢量保持渲染分辨率，因此可以与 UnityRHI DLSS 超分叠加。带 FG 时的显示帧率请用 `RhiCore.DisplayedPresentCount`，不要用 `Time.deltaTime`。
+
+### 帧生成输入验证
+
+在 DLSS Frame Generation Renderer Feature 中设置 **Debug View**，即可直接在编辑器 Game 视图检查最终准备给 NGX 的输入；编辑器中不会实际插入生成帧。
+
+- **Device Depth**：未经线性化的硬件深度。
+- **Linear Depth**：仅为观察方便而线性化的同一深度。
+- **Motion Vectors**：转换成当前帧到上一帧像素位移后的 URP motion。
+- **Camera Motion**：通过 device depth 与 `ClipToPrevClip` 重建的静态场景相机运动。
+- **Motion Error**：误差低于 0.25 像素为绿色，超过 1 像素趋向红色，无效/背景深度为蓝色。
+- **Motion Comparison**：左半屏是贴图 motion，右半屏是矩阵预测 motion。
+
+准备贴图格式为 `R32_SFloat` device depth 与 `R16G16_SFloat` motion，均统一为左上角原点，矩阵不包含 jitter。
 
 ## 神经渲染设置
 

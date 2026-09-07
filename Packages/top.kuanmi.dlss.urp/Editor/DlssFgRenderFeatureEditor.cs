@@ -27,9 +27,17 @@ namespace UnityRhi.Dlss.Urp.Editor
             EditorGUILayout.HelpBox(
                 "DLSS Frame Generation inserts interpolated frames at Present. " +
                 "Enable it on this renderer feature (or F8 in the Player HUD). " +
-                "It is Player-only (the Editor Game view is skipped). No Volume is used. " +
+                "Frame insertion is Player-only; Debug View works in the Editor Game view. No Volume is used. " +
                 "The feature clears VSync/target frame rate while active. Keep Render Pass " +
                 "Event at After Rendering Post Processing. XR is not supported.",
+                MessageType.Info);
+            EditorGUILayout.HelpBox(
+                "DLSS-G input contract: depth = hardware/device depth (R32 float here); " +
+                "motion = current-to-previous, top-left screen coordinates (RG16 float here). " +
+                "URP normalized UV motion is converted to pixels through MvecScale. " +
+                "Motion Error should be green for a static scene while the camera moves; " +
+                "red means the submitted motion and ClipToPrevClip prediction disagree. " +
+                "Blue marks invalid/background depth.",
                 MessageType.Info);
             using (new EditorGUI.DisabledScope(!RhiCore.IsD3D12Active))
             {

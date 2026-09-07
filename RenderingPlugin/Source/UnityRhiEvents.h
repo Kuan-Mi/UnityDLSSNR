@@ -24,4 +24,11 @@ enum UnityRhiEventId
     // the end event restores Unity's heaps on the active command list.
     kUnityRhiEvent_BeginExternalHeapDispatch = 4,
     kUnityRhiEvent_EndExternalHeapDispatch = 5,
+
+    // Publish FG inputs on the submission thread, in order with the Present
+    // that consumes them. `data` is a native-owned submission token.
+    kUnityRhiEvent_SubmitFrameGenerationInputs = 6,
+    // Transition Unity-owned inputs through Unity's resource state tracker on
+    // the recording thread before the submission-thread publication event.
+    kUnityRhiEvent_PrepareFrameGenerationInputs = 7,
 };

@@ -7,8 +7,10 @@
 
 #include <array>
 #include <atomic>
+#include <cmath>
 #include <cstring>
 #include <mutex>
+#include <unordered_map>
 
 #include "FrameGenerationSwapChain.h"
 #include "NgxRuntime.h"
@@ -43,7 +45,6 @@ struct FgState
     std::array<ComPtr<ID3D12Resource>, kRealSlotCount> outputReal;
     std::array<bool, kRealSlotCount> outputRealIsCopySource{{false, false}};
     uint32_t outputRealWriteIndex = 0;
-    uint32_t pacerRealSlot = UINT32_MAX;
     std::array<CommandContext, kCommandContextCount> commandContexts;
     ComPtr<ID3D12Fence> fence;
     HANDLE fenceEvent = nullptr;
@@ -68,6 +69,15 @@ struct FgState
 };
 
 FgState g_Fg;
+struct FgSubmission
+{
+    FrameGenerationInputs inputs;
+    ComPtr<ID3D12Resource> depth;
+    ComPtr<ID3D12Resource> motionVectors;
+};
+// Protected by g_Fg.mutex. Tokens are never reused, including after shutdown.
+std::unordered_map<uintptr_t, FgSubmission> g_FgSubmissions;
+uintptr_t g_NextFgSubmission = 0;
 std::atomic<uint64_t> g_DisplayedPresentCount{0};
 std::atomic<uint64_t> g_GeneratedPresentCount{0};
 std::atomic<uint64_t> g_RealPresentCount{0};
@@ -160,7 +170,6 @@ void ReleaseFeatureLocked()
         g_Fg.outputRealIsCopySource[i] = false;
     }
     g_Fg.outputRealWriteIndex = 0;
-    g_Fg.pacerRealSlot = UINT32_MAX;
     g_Fg.outputIsShaderResource = false;
     g_Fg.featureColorWidth = 0;
     g_Fg.featureColorHeight = 0;
@@ -282,7 +291,6 @@ bool EnsureFeatureLocked(
     g_Fg.featureFormat = format;
     g_Fg.outputIsShaderResource = false;
     g_Fg.outputRealWriteIndex = 0;
-    g_Fg.pacerRealSlot = UINT32_MAX;
     g_Fg.forceReset = true;
     LogInfo("[UnityRHI][DLSS-G] Created NGX frame-generation feature: color=%ux%u format=%u render=%ux%u (2x real buffers).",
         g_Fg.featureColorWidth, g_Fg.featureColorHeight,
@@ -345,6 +353,7 @@ bool InitializeFrameGeneration(ID3D12Device* device)
 void ShutdownFrameGeneration()
 {
     std::lock_guard lock(g_Fg.mutex);
+    g_FgSubmissions.clear();
     if (g_Fg.fence)
         WaitForAllWorkLocked();
     ReleaseFeatureLocked();
@@ -422,12 +431,29 @@ uint64_t GetRealPresentCount()
     return g_RealPresentCount.load(std::memory_order_relaxed);
 }
 
-uint32_t ConsumeFrameGenerationPacerRealSlot()
+bool WaitForFrameGenerationFence(uint64_t fenceValue)
 {
-    std::lock_guard lock(g_Fg.mutex);
-    const uint32_t slot = g_Fg.pacerRealSlot;
-    g_Fg.pacerRealSlot = UINT32_MAX;
-    return slot;
+    if (fenceValue == 0)
+        return false;
+
+    ComPtr<ID3D12Fence> fence;
+    {
+        std::lock_guard lock(g_Fg.mutex);
+        fence = g_Fg.fence;
+    }
+    if (!fence)
+        return false;
+    if (fence->GetCompletedValue() >= fenceValue)
+        return true;
+
+    const HANDLE event = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+    if (!event)
+        return false;
+    const HRESULT hr = fence->SetEventOnCompletion(fenceValue, event);
+    const bool completed = SUCCEEDED(hr) &&
+        WaitForSingleObject(event, 5000) == WAIT_OBJECT_0;
+    CloseHandle(event);
+    return completed;
 }
 
 void SubmitFrameGenerationInputs(const FrameGenerationInputs& inputs)
@@ -443,10 +469,60 @@ void SubmitFrameGenerationInputs(const FrameGenerationInputs& inputs)
     g_Fg.hasInputs = true;
 }
 
+uintptr_t CreateFrameGenerationSubmission(const FrameGenerationInputs& inputs)
+{
+    if (!inputs.depth || !inputs.motionVectors)
+        return 0;
+    std::lock_guard lock(g_Fg.mutex);
+    try
+    {
+        const uintptr_t token = ++g_NextFgSubmission;
+        g_FgSubmissions.emplace(token, FgSubmission{inputs, inputs.depth, inputs.motionVectors});
+        return token;
+    }
+    catch (...)
+    {
+        return 0;
+    }
+}
+
+void DestroyFrameGenerationSubmission(uintptr_t token)
+{
+    std::lock_guard lock(g_Fg.mutex);
+    g_FgSubmissions.erase(token);
+}
+
+void ExecuteFrameGenerationSubmission(uintptr_t token)
+{
+    std::lock_guard lock(g_Fg.mutex);
+    auto it = g_FgSubmissions.find(token);
+    if (it == g_FgSubmissions.end())
+        return;
+    // This runs on Unity's submission thread, after earlier Presents and before
+    // this frame's Present. A main-thread P/Invoke here races frames in flight.
+    g_Fg.inputs = it->second.inputs;
+    g_Fg.depth = it->second.depth;
+    g_Fg.motionVectors = it->second.motionVectors;
+    g_Fg.hasInputs = true;
+    g_FgSubmissions.erase(it);
+}
+
+bool GetFrameGenerationSubmissionInputs(uintptr_t token, FrameGenerationInputs& inputs)
+{
+    std::lock_guard lock(g_Fg.mutex);
+    auto it = g_FgSubmissions.find(token);
+    if (it == g_FgSubmissions.end())
+        return false;
+    inputs = it->second.inputs;
+    return true;
+}
+
 FrameGenerationPresentAction EvaluateFrameGeneration(
     IDXGISwapChain3* presentSwapChain, ID3D12CommandQueue* presentQueue,
-    ID3D12Resource* colorBuffer)
+    ID3D12Resource* colorBuffer, FrameGenerationPresentInfo* presentInfo)
 {
+    if (presentInfo)
+        *presentInfo = {};
     if (!IsFrameGenerationEnabled() || !presentSwapChain || !presentQueue ||
         !IsNgxInitialized() || NgxFrameGenerationAvailable() != 1)
         return FrameGenerationPresentAction::None;
@@ -510,12 +586,14 @@ FrameGenerationPresentAction EvaluateFrameGeneration(
                 UINT beforeCount = 0;
                 before[beforeCount++] = Transition(color.Get(),
                     D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                before[beforeCount++] = Transition(g_Fg.depth.Get(),
-                    static_cast<D3D12_RESOURCE_STATES>(g_Fg.inputs.depthState),
-                    D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                before[beforeCount++] = Transition(g_Fg.motionVectors.Get(),
-                    static_cast<D3D12_RESOURCE_STATES>(g_Fg.inputs.motionVectorsState),
-                    D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                if (g_Fg.inputs.depthState != D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
+                    before[beforeCount++] = Transition(g_Fg.depth.Get(),
+                        static_cast<D3D12_RESOURCE_STATES>(g_Fg.inputs.depthState),
+                        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                if (g_Fg.inputs.motionVectorsState != D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
+                    before[beforeCount++] = Transition(g_Fg.motionVectors.Get(),
+                        static_cast<D3D12_RESOURCE_STATES>(g_Fg.inputs.motionVectorsState),
+                        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                 if (g_Fg.outputIsShaderResource)
                     before[beforeCount++] = Transition(g_Fg.output.Get(),
                         D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE |
@@ -546,8 +624,9 @@ FrameGenerationPresentAction EvaluateFrameGeneration(
                 CopyMatrix(opt.prevClipToClip, g_Fg.inputs.prevClipToClip);
                 for (unsigned i = 0; i < 4; ++i)
                     opt.clipToLensClip[i][i] = 1.0f;
-                opt.jitterOffset[0] = -g_Fg.inputs.jitterX;
-                opt.jitterOffset[1] = -g_Fg.inputs.jitterY;
+                // Packet already contains sampling offsets in top-left pixel space.
+                opt.jitterOffset[0] = g_Fg.inputs.jitterX;
+                opt.jitterOffset[1] = g_Fg.inputs.jitterY;
                 opt.mvecScale[0] = g_Fg.inputs.motionVectorScaleX;
                 opt.mvecScale[1] = g_Fg.inputs.motionVectorScaleY;
                 std::memcpy(opt.cameraPos, g_Fg.inputs.cameraPos, sizeof(opt.cameraPos));
@@ -561,11 +640,19 @@ FrameGenerationPresentAction EvaluateFrameGeneration(
                 opt.colorBuffersHDR = g_Fg.inputs.colorBuffersHdr != 0;
                 opt.depthInverted = g_Fg.inputs.depthInverted != 0;
                 opt.cameraMotionIncluded = g_Fg.inputs.cameraMotionIncluded != 0;
-                opt.reset = g_Fg.forceReset || g_Fg.inputs.reset != 0;
+                // In the row-vector wire layout these are Unity's m32/m33:
+                // perspective has w=-viewZ, orthographic has constant w.
+                opt.orthoProjection = std::abs(opt.cameraViewToClip[2][3]) < 1e-6f &&
+                    std::abs(opt.cameraViewToClip[3][3]) > 1e-6f;
+                opt.reset = g_Fg.forceReset || g_Fg.inputs.reset != 0 ||
+                    g_Fg.lastEvaluatedFrame == UINT64_MAX ||
+                    g_Fg.inputs.frameId != g_Fg.lastEvaluatedFrame + 1;
                 opt.mvecsSubrectSize = {g_Fg.inputs.renderWidth, g_Fg.inputs.renderHeight};
                 opt.depthSubrectSize = {g_Fg.inputs.renderWidth, g_Fg.inputs.renderHeight};
                 opt.backbufferSubrectSize = {g_Fg.inputs.colorWidth, g_Fg.inputs.colorHeight};
 
+                NVSDK_NGX_Parameter_SetUI(g_Fg.parameters,
+                    NVSDK_NGX_DLSSG_Parameter_MvecJittered, 0);
                 NVSDK_NGX_Result result;
                 {
                     std::lock_guard ngxLock(NgxMutex());
@@ -587,12 +674,14 @@ FrameGenerationPresentAction EvaluateFrameGeneration(
                 after[afterCount++] = Transition(color.Get(),
                     D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
                     copyOntoColor ? D3D12_RESOURCE_STATE_COPY_DEST : D3D12_RESOURCE_STATE_PRESENT);
-                after[afterCount++] = Transition(g_Fg.depth.Get(),
-                    D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
-                    static_cast<D3D12_RESOURCE_STATES>(g_Fg.inputs.depthState));
-                after[afterCount++] = Transition(g_Fg.motionVectors.Get(),
-                    D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
-                    static_cast<D3D12_RESOURCE_STATES>(g_Fg.inputs.motionVectorsState));
+                if (g_Fg.inputs.depthState != D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
+                    after[afterCount++] = Transition(g_Fg.depth.Get(),
+                        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+                        static_cast<D3D12_RESOURCE_STATES>(g_Fg.inputs.depthState));
+                if (g_Fg.inputs.motionVectorsState != D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
+                    after[afterCount++] = Transition(g_Fg.motionVectors.Get(),
+                        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+                        static_cast<D3D12_RESOURCE_STATES>(g_Fg.inputs.motionVectorsState));
                 after[afterCount++] = Transition(g_Fg.output.Get(),
                     D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
                 after[afterCount++] = Transition(realResource,
@@ -638,14 +727,18 @@ FrameGenerationPresentAction EvaluateFrameGeneration(
                 if (FAILED(hr))
                     return FrameGenerationPresentAction::None;
 
-                // No CPU wait: Present is queued on the same graphics queue after
-                // this Execute, so the GPU orders Evaluate/copy before the flip.
+                // Do not block Unity's render thread. The asynchronous presenter
+                // waits for this exact fence before presenting the generated frame.
                 g_Fg.outputIsShaderResource = true;
                 g_Fg.outputRealIsCopySource[realSlot] = true;
-                g_Fg.pacerRealSlot = realSlot;
                 g_Fg.outputRealWriteIndex = (realSlot + 1) % kRealSlotCount;
                 g_Fg.lastEvaluatedFrame = g_Fg.inputs.frameId;
                 g_Fg.forceReset = false;
+                if (presentInfo)
+                {
+                    presentInfo->realSlot = realSlot;
+                    presentInfo->readyFenceValue = signalValue;
+                }
                 return FrameGenerationPresentAction::Insert;
             }
         }

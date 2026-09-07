@@ -15,6 +15,8 @@ namespace UnityRhi.Interop
         public const int EventFlushAndSignalSyncPoint = 3;
         public const int EventBeginExternalHeapDispatch = 4;
         public const int EventEndExternalHeapDispatch = 5;
+        public const int EventSubmitFrameGenerationInputs = 6;
+        public const int EventPrepareFrameGenerationInputs = 7;
 
         [DllImport(PluginName)]
         public static extern IntPtr UnityRhiGetRenderEventAndDataFunc();
@@ -92,6 +94,12 @@ namespace UnityRhi.Interop
 
         [DllImport(PluginName)]
         internal static extern void UnityRhiSubmitFrameGenerationInputs(IntPtr inputs);
+
+        [DllImport(PluginName)]
+        internal static extern IntPtr UnityRhiCreateFrameGenerationSubmission(in FrameGenerationInputs inputs);
+
+        [DllImport(PluginName)]
+        internal static extern void UnityRhiDestroyFrameGenerationSubmission(IntPtr token);
 
         [DllImport(PluginName)]
         internal static extern ulong UnityRhiGetDisplayedPresentCount();

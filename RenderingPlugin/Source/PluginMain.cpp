@@ -181,6 +181,7 @@ void ConfigureRenderEvents()
     g_State.d3d12->ConfigureEvent(kUnityRhiEvent_ExecuteCommandStream, &config);
     g_State.d3d12->ConfigureEvent(kUnityRhiEvent_BeginExternalHeapDispatch, &config);
     g_State.d3d12->ConfigureEvent(kUnityRhiEvent_EndExternalHeapDispatch, &config);
+    g_State.d3d12->ConfigureEvent(kUnityRhiEvent_PrepareFrameGenerationInputs, &config);
 
     // The sync-point event needs the opposite configuration: queue access (it
     // signals a fence on Unity's graphics queue, so it runs on the submission
@@ -192,6 +193,7 @@ void ConfigureRenderEvents()
                        kUnityD3D12EventConfigFlag_SyncWorkerThreads;
     syncConfig.ensureActiveRenderTextureIsBound = false;
     g_State.d3d12->ConfigureEvent(kUnityRhiEvent_FlushAndSignalSyncPoint, &syncConfig);
+    g_State.d3d12->ConfigureEvent(kUnityRhiEvent_SubmitFrameGenerationInputs, &syncConfig);
     g_State.eventsConfigured = true;
 }
 
@@ -286,6 +288,28 @@ void UNITY_INTERFACE_API OnRenderEvent(int eventId, void* data)
 
     switch (eventId)
     {
+    case kUnityRhiEvent_PrepareFrameGenerationInputs:
+    {
+        FrameGenerationInputs inputs{};
+        UnityGraphicsD3D12RecordingState recordingState{};
+        if (g_State.d3d12 && GetFrameGenerationSubmissionInputs(reinterpret_cast<uintptr_t>(data), inputs) &&
+            g_State.d3d12->CommandRecordingState(&recordingState) && recordingState.commandList)
+        {
+            ForwardRequestResourceState(g_State.d3d12, recordingState.commandList,
+                inputs.depth, static_cast<D3D12_RESOURCE_STATES>(inputs.depthState));
+            ForwardRequestResourceState(g_State.d3d12, recordingState.commandList,
+                inputs.motionVectors, static_cast<D3D12_RESOURCE_STATES>(inputs.motionVectorsState));
+        }
+        else
+        {
+            DestroyFrameGenerationSubmission(reinterpret_cast<uintptr_t>(data));
+            LogWarning("[UnityRHI][DLSS-G] Input state preparation failed; frame dropped.");
+        }
+        break;
+    }
+    case kUnityRhiEvent_SubmitFrameGenerationInputs:
+        ExecuteFrameGenerationSubmission(reinterpret_cast<uintptr_t>(data));
+        break;
     case kUnityRhiEvent_ExecuteCommandStream:
     {
         NativeProfileScope eventProfile("UnityRHI.ExecuteCommandStream");
@@ -610,6 +634,17 @@ extern "C"
     {
         if (inputs)
             unityrhi::SubmitFrameGenerationInputs(*inputs);
+    }
+
+    UNITY_INTERFACE_EXPORT void* UNITY_INTERFACE_API UnityRhiCreateFrameGenerationSubmission(
+        const unityrhi::FrameGenerationInputs* inputs)
+    {
+        return inputs ? reinterpret_cast<void*>(unityrhi::CreateFrameGenerationSubmission(*inputs)) : nullptr;
+    }
+
+    UNITY_INTERFACE_EXPORT void UNITY_INTERFACE_API UnityRhiDestroyFrameGenerationSubmission(void* token)
+    {
+        unityrhi::DestroyFrameGenerationSubmission(reinterpret_cast<uintptr_t>(token));
     }
 
     UNITY_INTERFACE_EXPORT unsigned long long UNITY_INTERFACE_API UnityRhiGetDisplayedPresentCount()
