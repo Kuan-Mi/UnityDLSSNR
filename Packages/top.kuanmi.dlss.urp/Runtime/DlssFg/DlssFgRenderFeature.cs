@@ -91,12 +91,12 @@ namespace UnityRhi.Dlss.Urp
 
         private bool RuntimeEnabled => _runtimeEnabled ?? enableFrameGeneration;
 
-        /// <summary>Runtime toggle used by the Player HUD. Does not require a Volume.</summary>
+        /// <summary>Runtime toggle for external callers. Does not require a Volume.</summary>
         public static void SetFrameGenerationEnabled(bool enabled)
         {
             if (s_live == null)
             {
-                Debug.LogWarning("[UnityRHI.DLSS-G] F8 ignored: renderer feature is not live.");
+                Debug.LogWarning("[UnityRHI.DLSS-G] Toggle ignored: renderer feature is not live.");
                 return;
             }
 

@@ -45,8 +45,8 @@ frames in the Editor Game view. Build a standalone Windows x64 player.
 2. Select **Add Renderer Feature > DLSS Frame Generation**.
 3. Keep the pass at **After Rendering Post Processing**. Depth and motion are
    copied for the native Present path; interpolated color comes from the swap
-   chain. Enable **Enable Frame Generation** on the feature (F8 in a Player
-   build also toggles it). There is no Volume override.
+   chain. Enable **Enable Frame Generation** on the feature. There is no
+   Volume override.
 
 The feature requests URP depth and motion-vector textures automatically. While
 it is active it clears VSync and `Application.targetFrameRate` (NVIDIA frame
@@ -143,7 +143,7 @@ Scene 视图保持原生分辨率；只有 Game 相机协商更低的预放大�
 
 1. 打开当前 URP 资源所使用的 Universal Renderer Data。
 2. 选择 **Add Renderer Feature > DLSS Frame Generation**。
-3. 将渲染阶段保持为 **After Rendering Post Processing**。该通道只拷贝深度和运动矢量，插值颜色来自交换链 Present。在 Feature 上勾选 **Enable Frame Generation**（Player 里也可按 F8 切换）。没有 Volume。
+3. 将渲染阶段保持为 **After Rendering Post Processing**。该通道只拷贝深度和运动矢量，插值颜色来自交换链 Present。在 Feature 上勾选 **Enable Frame Generation**。没有 Volume。
 
 开启后会关闭 VSync 并取消 `Application.targetFrameRate` 限制。默认只处理相机堆栈中的最终 Game 相机。XR 以及渲染到 `targetTexture` 的相机会被跳过。深度/运动矢量保持渲染分辨率，因此可以与 UnityRHI DLSS 超分叠加。带 FG 时的显示帧率请用 `RhiCore.DisplayedPresentCount`，不要用 `Time.deltaTime`。
 

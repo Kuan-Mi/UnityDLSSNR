@@ -125,7 +125,7 @@ Frame Generation:
 
 1. Add **DLSS Frame Generation** to the Universal Renderer Data.
 2. Keep the pass at **After Rendering Post Processing** and enable it on the feature.
-3. Make a Windows x64 Player build. The Editor Game view does not insert generated frames. F8 toggles FG at runtime.
+3. Make a Windows x64 Player build. The Editor Game view does not insert generated frames.
 
 ## Package documentation
 
@@ -252,7 +252,7 @@ Renderer Feature 会自动请求所需的深度纹理和运动矢量纹理。图
 
 1. 在 Universal Renderer Data 上添加 **DLSS Frame Generation**。
 2. 将渲染阶段保持为 **After Rendering Post Processing**，并在 Feature 上启用。
-3. 打 Windows x64 Player 包。编辑器 Game 视图不会插入生成帧。运行时 F8 可开关 FG。
+3. 打 Windows x64 Player 包。编辑器 Game 视图不会插入生成帧。
 
 ## 各包文档
 
